@@ -5,12 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { OrderStatusUpdate } from "./OrderStatsUpdate"
-import { getOrdersBySeller, searchOrders, getOrderStats } from "@/data/order"
+import { getAllOrders } from "@/data/order"
+import { getProductById } from "@/data/product"
 import { Search, Filter, Package, TrendingUp } from "lucide-react"
 import type { Order, OrderStatus } from "@/types/order"
 
 interface OrderManagementProps {
-  sellerId: string
+  sellerId?: string
 }
 
 export function OrderManagement({ sellerId }: OrderManagementProps) {
@@ -31,7 +32,7 @@ export function OrderManagement({ sellerId }: OrderManagementProps) {
   const loadOrders = async () => {
     try {
       setLoading(true)
-      const fetchedOrders = await getOrdersBySeller(sellerId)
+      const fetchedOrders = getAllOrders()
       setOrders(fetchedOrders)
     } catch (error) {
       console.error("Failed to load orders:", error)
@@ -41,7 +42,22 @@ export function OrderManagement({ sellerId }: OrderManagementProps) {
   }
 
   const filterOrders = () => {
-    let filtered = searchOrders(orders, searchTerm)
+    let filtered = orders
+
+    // Search functionality
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase()
+      filtered = filtered.filter(
+        (order) =>
+          order.id.toLowerCase().includes(searchLower) ||
+          order.buyerId.toLowerCase().includes(searchLower) ||
+          order.deliveryAddress.toLowerCase().includes(searchLower) ||
+          order.items.some((item) => {
+            const product = getProductById(item.productId)
+            return product?.name.toLowerCase().includes(searchLower)
+          }),
+      )
+    }
 
     // Filter by status
     if (statusFilter !== "all") {
@@ -53,7 +69,7 @@ export function OrderManagement({ sellerId }: OrderManagementProps) {
 
   const handleStatusUpdated = (orderId: string, newStatus: OrderStatus) => {
     setOrders((prevOrders) =>
-      prevOrders.map((order) => (order.orderId === orderId ? { ...order, status: newStatus } : order)),
+      prevOrders.map((order) => (order.id === orderId ? { ...order, status: newStatus } : order)),
     )
   }
 
@@ -72,6 +88,21 @@ export function OrderManagement({ sellerId }: OrderManagementProps) {
       hour: "2-digit",
       minute: "2-digit",
     }).format(date)
+  }
+
+  // Calculate stats
+  const getOrderStats = (orders: Order[]) => {
+    const total = orders.length
+    const totalRevenue = orders.reduce((sum, order) => sum + order.totalPrice, 0)
+    const pending = orders.filter((order) => order.status === "pending").length
+    const averageOrderValue = total > 0 ? totalRevenue / total : 0
+
+    return {
+      total,
+      totalRevenue,
+      pending,
+      averageOrderValue,
+    }
   }
 
   const stats = getOrderStats(orders)
@@ -193,15 +224,14 @@ export function OrderManagement({ sellerId }: OrderManagementProps) {
           ) : (
             <div className="space-y-4">
               {filteredOrders.map((order) => (
-                <div key={order.orderId} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                <div key={order.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
                   <div className="flex items-start justify-between mb-3">
                     <div>
                       <div className="flex items-center gap-3 mb-2">
-                        <h4 className="font-semibold">{order.orderId}</h4>
+                        <h4 className="font-semibold">#{order.id.slice(-8)}</h4>
                         <OrderStatusUpdate
-                          orderId={order.orderId}
+                          orderId={order.id}
                           currentStatus={order.status}
-                          sellerId={sellerId}
                           onStatusUpdated={handleStatusUpdated}
                         />
                       </div>
@@ -222,7 +252,7 @@ export function OrderManagement({ sellerId }: OrderManagementProps) {
                     {order.items.map((item) => (
                       <div key={item.id} className="flex justify-between text-sm">
                         <span>
-                          {item.product?.name || `Product ${item.productId}`}
+                          {getProductById(item.productId)?.name || `Product ${item.productId}`}
                           {item.selectedVariant && ` (${item.selectedVariant})`}
                           {" × "}
                           {item.quantity}
@@ -238,9 +268,9 @@ export function OrderManagement({ sellerId }: OrderManagementProps) {
                   </div>
 
                   {/* Voucher Info */}
-                  {order.voucherDiscount && order.voucherDiscount > 0 && (
+                  {order.vouchers && order.vouchers.length > 0 && (
                     <div className="text-sm text-green-600 mt-1">
-                      <strong>Discount Applied:</strong> {order.voucherCode} (-{formatCurrency(order.voucherDiscount)})
+                      <strong>Vouchers Applied:</strong> {order.vouchers.map((v) => v.title).join(", ")}
                     </div>
                   )}
                 </div>

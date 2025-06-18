@@ -58,15 +58,13 @@ function cartReducer(state: CartState, action: CartAction): CartState {
           createdAt: now,
           items: [
             {
-              cartId: generateId(),
-              cartItemId: generateId(),
-              userId: "guest-user",
+              id: generateId(),
               productId: product.id,
               unitPrice: product.price,
               quantity,
               createdAt: now,
-              product,
               selectedVariant,
+              updatedAt: new Date("2025-06-15")
             },
           ],
         }
@@ -91,15 +89,13 @@ function cartReducer(state: CartState, action: CartAction): CartState {
       } else {
         // Add new item
         const newItem: CartItem = {
-          cartId: state.cart.cartId,
-          cartItemId: generateId(),
-          userId: state.cart.userId,
+          id: state.cart.cartId,
           productId: product.id,
           unitPrice: product.price,
           quantity,
           createdAt: now,
-          product,
           selectedVariant,
+          updatedAt: undefined
         }
         updatedItems = [...state.cart.items, newItem]
       }
@@ -122,7 +118,7 @@ function cartReducer(state: CartState, action: CartAction): CartState {
       if (!state.cart) return state
 
       const { cartItemId } = action.payload
-      const updatedItems = state.cart.items.filter((item) => item.cartItemId !== cartItemId)
+      const updatedItems = state.cart.items.filter((item) => item.id !== cartItemId)
       const totalAmount = calculateTotalAmount(updatedItems)
 
       return {
@@ -146,7 +142,7 @@ function cartReducer(state: CartState, action: CartAction): CartState {
       }
 
       const updatedItems = state.cart.items.map((item) =>
-        item.cartItemId === cartItemId ? { ...item, quantity } : item,
+        item.id === cartItemId ? { ...item, quantity } : item,
       )
 
       const totalAmount = calculateTotalAmount(updatedItems)

@@ -9,8 +9,7 @@ interface OrderSummaryProps {
 
 export function OrderSummary({ totalItems, totalAmount }: OrderSummaryProps) {
   const safeTotal = totalAmount || 0
-  const tax = safeTotal * 0.08
-  const finalTotal = safeTotal + tax
+  const finalTotal = safeTotal
 
   return (
     <div className="lg:col-span-1">
@@ -26,10 +25,6 @@ export function OrderSummary({ totalItems, totalAmount }: OrderSummaryProps) {
           <div className="flex justify-between">
             <span>Shipping</span>
             <span className="text-green-600">Free</span>
-          </div>
-          <div className="flex justify-between">
-            <span>Tax</span>
-            <span>${tax.toFixed(2)}</span>
           </div>
           <div className="border-t pt-4">
             <div className="flex justify-between font-bold text-lg">

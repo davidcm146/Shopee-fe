@@ -15,6 +15,7 @@ import {
   faStore,
   faUsers,
   faClipboardList,
+  faTicket,
 } from "@fortawesome/free-solid-svg-icons"
 import { Button } from "../components/ui/button"
 
@@ -38,28 +39,10 @@ const sidebarItems = [
     path: "/seller/orders",
   },
   {
-    id: "analytics",
-    label: "Analytics",
-    icon: faChartLine,
-    path: "/seller/analytics",
-  },
-  {
-    id: "customers",
-    label: "Customers",
-    icon: faUsers,
-    path: "/seller/customers",
-  },
-  {
-    id: "inventory",
-    label: "Inventory",
-    icon: faClipboardList,
-    path: "/seller/inventory",
-  },
-  {
-    id: "settings",
-    label: "Settings",
-    icon: faCog,
-    path: "/seller/settings",
+    id: "vouchers",
+    label: "Vouchers",
+    icon: faTicket,
+    path: "/seller/vouchers",
   },
 ]
 

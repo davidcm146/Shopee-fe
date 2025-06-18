@@ -7,11 +7,10 @@ import { OrderItemsCard } from "../components/order-detail/OrderItemsCard"
 import { DeliveryAddressCard } from "../components/order-detail/DeliveryAdressCard"
 import { OrderSummarySidebar } from "../components/order-detail/OrderSummarySidebar"
 import { OrderNotFound } from "../components/order/OrderNotFound"
-import { useOrder } from "../context/OrderContext"
+import { getOrderById } from "../data/order"
 
 export function OrderDetailPage() {
   const { orderId } = useParams<{ orderId: string }>()
-  const { getOrderById } = useOrder()
 
   const order = orderId ? getOrderById(orderId) : null
 
@@ -21,7 +20,7 @@ export function OrderDetailPage() {
 
   return (
     <div className="container py-6 mx-auto max-w-4xl">
-      <OrderHeader orderId={order.orderId} />
+      <OrderHeader orderId={order.id} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Order Information */}

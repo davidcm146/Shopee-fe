@@ -1,3 +1,5 @@
+"use client"
+
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { CheckoutHeader } from "../components/checkout/CheckoutHeader"
@@ -5,15 +7,15 @@ import { CheckoutForm } from "../components/checkout/CheckoutForm"
 import { CheckoutOrderSummary } from "../components/checkout/OrderSummary"
 import { VoucherSelection } from "../components/checkout/VoucherSelection"
 import { useCart } from "../context/CartContext"
-import { useOrder } from "../context/OrderContext"
+import { createOrder } from "../data/order"
+import { calculateVoucherDiscount } from "../data/voucher"
 import type { CheckoutData } from "../types/order"
-import type { AppliedVoucher } from "../types/voucher"
+import type { Voucher } from "../types/voucher"
 
 export function CheckoutPage() {
   const navigate = useNavigate()
   const { state: cartState, clearCart } = useCart()
-  const { createOrder } = useOrder()
-  const [appliedVoucher, setAppliedVoucher] = useState<AppliedVoucher | null>(null)
+  const [appliedVouchers, setAppliedVouchers] = useState<Voucher[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
 
   // Redirect if cart is empty (but not during processing)
@@ -22,8 +24,8 @@ export function CheckoutPage() {
     return null
   }
 
-  const handleVoucherApply = (voucher: AppliedVoucher | null) => {
-    setAppliedVoucher(voucher)
+  const handleVouchersApply = (vouchers: Voucher[]) => {
+    setAppliedVouchers(vouchers)
   }
 
   const handleCheckout = async (checkoutData: CheckoutData) => {
@@ -31,14 +33,18 @@ export function CheckoutPage() {
       setIsProcessing(true)
 
       const subtotal = cartState.cart!.totalAmount
-      const tax = subtotal * 0.08
-      const shipping = appliedVoucher?.voucher.type === "free_shipping" ? 0 : 5.99
-      const voucherDiscount = appliedVoucher?.discountAmount || 0
 
-      // Create order from cart items
+      const hasFreeShipping = appliedVouchers.some((voucher) => voucher.type === "free_shipping")
+      const shipping = hasFreeShipping ? 0 : 5.99
+
+      const totalVoucherDiscount = appliedVouchers.reduce((total, voucher) => {
+        if (voucher.type === "free_shipping") return total
+        return total + calculateVoucherDiscount(voucher, subtotal)
+      }, 0)
+
       const orderData = {
         buyerId: cartState.cart!.userId,
-        sellerId: "default-seller", // In a real app, this would be determined by the products
+        paymentId: `payment_${Date.now()}`,
         items: cartState.cart!.items.map((item) => ({
           productId: item.productId,
           quantity: item.quantity,
@@ -46,31 +52,35 @@ export function CheckoutPage() {
           selectedVariant: item.selectedVariant,
         })),
         deliveryAddress: checkoutData.deliveryAddress,
-        paymentMethod: checkoutData.paymentMethod,
-        // Add voucher information
-        voucherId: appliedVoucher?.voucher.id,
-        voucherDiscount: voucherDiscount,
-        voucherCode: appliedVoucher?.voucher.title,
-        // Add price breakdown
+        vouchers: appliedVouchers,
         subtotal,
-        tax,
         shipping,
+        voucherDiscount: totalVoucherDiscount,
+        total: subtotal + shipping - totalVoucherDiscount,
       }
 
       const order = await createOrder(orderData)
 
-      // Navigate first, then clear cart after a small delay
-      navigate(`/order-confirmation/${order.orderId}`)
+      // Nếu chọn PayPal thì redirect
+      if (checkoutData.paymentMethod === "paypal") {
+        window.location.href = `https://www.sandbox.paypal.com/checkoutnow?token=${order.paymentId}`
+        return
+      }
 
-      // Clear cart after navigation to prevent redirect
+      // Nếu là COD thì hiển thị thông báo và chuyển tới trang xác nhận đơn
+      alert("Order placed with Cash on Delivery!")
+
+      navigate(`/order-confirmation/${order.id}`)
+
+      // Clear cart sau một chút để đảm bảo navigate thành công
       setTimeout(() => {
         clearCart()
         setIsProcessing(false)
       }, 100)
+
     } catch (error) {
       console.error("Checkout failed:", error)
       setIsProcessing(false)
-      // Handle error (show toast, etc.)
     }
   }
 
@@ -82,8 +92,8 @@ export function CheckoutPage() {
         <div className="lg:col-span-2 space-y-6">
           <VoucherSelection
             orderAmount={cartState.cart.totalAmount}
-            onVoucherApply={handleVoucherApply}
-            appliedVoucher={appliedVoucher}
+            onVouchersApply={handleVouchersApply}
+            appliedVouchers={appliedVouchers}
           />
           <CheckoutForm onSubmit={handleCheckout} isLoading={isProcessing} />
         </div>
@@ -93,11 +103,10 @@ export function CheckoutPage() {
           <CheckoutOrderSummary
             items={cartState.cart.items}
             totalAmount={cartState.cart.totalAmount}
-            appliedVoucher={appliedVoucher}
+            appliedVouchers={appliedVouchers}
           />
         </div>
       </div>
     </div>
   )
 }
-

@@ -1,5 +1,7 @@
+"use client"
+
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
-import { faStar, faFilter } from "@fortawesome/free-solid-svg-icons"
+import { faStar, faFilter, faThumbsUp, faThumbsDown } from "@fortawesome/free-solid-svg-icons"
 import { Button } from "../ui/button"
 import type { ReviewFilters } from "../../types/review"
 
@@ -97,6 +99,24 @@ export function ReviewFilters({ filters, onFiltersChange, totalReviews, ratingCo
             className={filters.sortBy === "rating_low" ? "bg-orange-500 hover:bg-orange-600" : ""}
           >
             Lowest Rating
+          </Button>
+          <Button
+            variant={filters.sortBy === "most_liked" ? "default" : "outline"}
+            size="sm"
+            onClick={() => handleSortChange("most_liked")}
+            className={filters.sortBy === "most_liked" ? "bg-orange-500 hover:bg-orange-600" : ""}
+          >
+            <FontAwesomeIcon icon={faThumbsUp} className="h-3 w-3 mr-1" />
+            Most Liked
+          </Button>
+          <Button
+            variant={filters.sortBy === "most_disliked" ? "default" : "outline"}
+            size="sm"
+            onClick={() => handleSortChange("most_disliked")}
+            className={filters.sortBy === "most_disliked" ? "bg-orange-500 hover:bg-orange-600" : ""}
+          >
+            <FontAwesomeIcon icon={faThumbsDown} className="h-3 w-3 mr-1" />
+            Most Disliked
           </Button>
         </div>
       </div>

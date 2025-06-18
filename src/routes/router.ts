@@ -15,6 +15,7 @@ import { SellerLayout } from "@/layouts/SellerLayout"
 import { ProductManagementPage } from "@/pages/seller/ProductManagementPage"
 import { DashboardPage } from "@/pages/seller/DashboardPage"
 import OrdersManagementPage from "@/pages/seller/OrdersManagementPage"
+import VouchersPage from "@/pages/seller/VouchersPage"
 
 export const router = createBrowserRouter([
   {
@@ -41,7 +42,8 @@ export const router = createBrowserRouter([
       { index: true, Component: DashboardPage },
       { path: "dashboard", Component: DashboardPage },
       { path: "products", Component: ProductManagementPage },
-      { path: "orders", Component: OrdersManagementPage }
+      { path: "orders", Component: OrdersManagementPage },
+      { path: "vouchers", Component: VouchersPage}
     ],
   },
 ])

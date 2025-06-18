@@ -4,7 +4,7 @@ export interface User {
   email: string
   password: string
   address: string[]
-  role: string
+  role: "BUYER" | "SELLER"
   createdAt: Date
 }
 

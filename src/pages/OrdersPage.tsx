@@ -1,14 +1,16 @@
+"use client"
+
 import { useState, useMemo } from "react"
 import { OrdersHeader } from "../components/orders/OrdersHeader"
 import { OrdersStats } from "../components/orders/OrdersStats"
 import { OrdersFilter } from "../components/orders/OrderFilter"
 import { OrdersList } from "../components/orders/OrdersList"
-import { useOrder } from "../context/OrderContext"
+import { getUserOrders } from "../data/order"
 import type { OrderStatus } from "../types/order"
 
 export function OrdersPage() {
-  const { getUserOrders, state } = useOrder()
   const [activeFilter, setActiveFilter] = useState<OrderStatus | "all">("all")
+  const [isLoading, setIsLoading] = useState(false)
 
   // In a real app, this would come from auth context
   const userId = "guest-user"
@@ -26,7 +28,7 @@ export function OrdersPage() {
       <OrdersHeader totalOrders={userOrders.length} />
       <OrdersStats orders={userOrders} />
       <OrdersFilter onFilterChange={setActiveFilter} activeFilter={activeFilter} />
-      <OrdersList orders={filteredOrders} isLoading={state.isLoading} />
+      <OrdersList orders={filteredOrders} isLoading={isLoading} />
     </div>
   )
 }

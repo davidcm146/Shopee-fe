@@ -19,7 +19,7 @@ export function OrderSummarySidebar({ order }: OrderSummarySidebarProps) {
         <div className="space-y-2">
           <div className="flex justify-between">
             <span>Order ID</span>
-            <span className="font-medium">{order.orderId.slice(-8)}</span>
+            <span className="font-medium">{order.id.slice(-8)}</span>
           </div>
           <div className="flex justify-between">
             <span>Order Date</span>
@@ -41,18 +41,25 @@ export function OrderSummarySidebar({ order }: OrderSummarySidebarProps) {
             <span className="text-sm">Shipping</span>
             <span>{order.shipping === 0 ? "Free" : `$${order.shipping.toFixed(2)}`}</span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-sm">Tax</span>
-            <span>${order.tax.toFixed(2)}</span>
-          </div>
 
-          {/* Voucher Discount */}
-          {order.voucherDiscount && order.voucherDiscount > 0 && (
-            <div className="flex justify-between text-green-600">
-              <span className="text-sm">Voucher Discount {order.voucherCode && `(${order.voucherCode})`}</span>
-              <span>-${order.voucherDiscount.toFixed(2)}</span>
-            </div>
-          )}
+          {/* Voucher Discounts */}
+          {order.vouchers.length > 0 &&
+            order.vouchers.map((voucher) => (
+              <div key={voucher.id} className="flex justify-between text-green-600">
+                <span className="text-sm">
+                  {voucher.title}
+                  {voucher.type === "percentage" && ` (${voucher.discount}%)`}
+                  {voucher.type === "fixed_amount" && ` (-$${voucher.discount.toFixed(2)})`}
+                </span>
+                <span>
+                  {voucher.type === "free_shipping"
+                    ? "Free Shipping"
+                    : voucher.type === "percentage"
+                    ? `- ${((order.subtotal * voucher.discount) / 100).toFixed(2)}`
+                    : `- ${voucher.discount.toFixed(2)}`}
+                </span>
+              </div>
+            ))}
         </div>
 
         <div className="border-t pt-4">

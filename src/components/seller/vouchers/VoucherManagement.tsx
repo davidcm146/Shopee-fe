@@ -10,7 +10,6 @@ import { CreateVoucherForm } from "./CreateVoucherForm"
 import { getVouchersBySeller, updateVoucherStatus, getVoucherStats } from "@/data/voucher"
 import { Search, Filter, Ticket, Percent, DollarSign, Truck, Calendar, Users, TrendingUp } from "lucide-react"
 import type { Voucher, VoucherStatus, VoucherType } from "@/types/voucher"
-import { useToast } from "@/hooks/use-toast"
 
 interface VoucherManagementProps {
   sellerId: string
@@ -23,7 +22,6 @@ export function VoucherManagement({ sellerId }: VoucherManagementProps) {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<VoucherStatus | "all">("all")
   const [typeFilter, setTypeFilter] = useState<VoucherType | "all">("all")
-  const { toast } = useToast()
 
   useEffect(() => {
     loadVouchers()
@@ -76,24 +74,13 @@ export function VoucherManagement({ sellerId }: VoucherManagementProps) {
       const result = await updateVoucherStatus(voucherId, newStatus, sellerId)
 
       if (result.success) {
-        toast({
-          title: "Status Updated",
-          description: result.message,
-        })
+        console.log(result.message);
         setVouchers((prev) => prev.map((v) => (v.id === voucherId ? { ...v, status: newStatus } : v)))
       } else {
-        toast({
-          title: "Update Failed",
-          description: result.message,
-          variant: "destructive",
-        })
+        console.log(result.message);
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update voucher status",
-        variant: "destructive",
-      })
+      console.log(error);
     }
   }
 

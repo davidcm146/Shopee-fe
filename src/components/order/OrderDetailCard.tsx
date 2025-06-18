@@ -16,7 +16,7 @@ export function OrderDetailsCard({ order }: OrderDetailsCardProps) {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <p className="text-sm text-muted-foreground">Order ID</p>
-            <p className="font-medium">{order.orderId}</p>
+            <p className="font-medium">{order.id}</p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Order Date</p>
@@ -43,7 +43,7 @@ export function OrderDetailsCard({ order }: OrderDetailsCardProps) {
             {order.items.map((item) => (
               <div key={item.id} className="flex justify-between">
                 <span>
-                  { getProductById(item.productId)?.name } x {item.quantity}
+                  {getProductById(item.productId)?.name} x {item.quantity}
                 </span>
                 <span>${(item.unitPrice * item.quantity).toFixed(2)}</span>
               </div>
@@ -61,18 +61,25 @@ export function OrderDetailsCard({ order }: OrderDetailsCardProps) {
             <span className="text-sm">Shipping</span>
             <span>{order.shipping === 0 ? "Free" : `$${order.shipping.toFixed(2)}`}</span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-sm">Tax</span>
-            <span>${order.tax.toFixed(2)}</span>
-          </div>
 
           {/* Voucher Discount */}
-          {order.voucherDiscount && order.voucherDiscount > 0 && (
-            <div className="flex justify-between text-green-600">
-              <span className="text-sm">Voucher Discount {order.voucherCode && `(${order.voucherCode})`}</span>
-              <span>-${order.voucherDiscount.toFixed(2)}</span>
-            </div>
-          )}
+          {order.vouchers.length > 0 &&
+            order.vouchers.map((voucher) => (
+              <div key={voucher.id} className="flex justify-between text-green-600">
+                <span className="text-sm">
+                  {voucher.title}
+                  {voucher.type === "percentage" && ` (${voucher.discount}%)`}
+                  {voucher.type === "fixed_amount" && ` (-$${voucher.discount.toFixed(2)})`}
+                </span>
+                <span>
+                  {voucher.type === "free_shipping"
+                    ? "Free Shipping"
+                    : voucher.type === "percentage"
+                      ? `- ${((order.subtotal * voucher.discount) / 100).toFixed(2)}`
+                      : `- ${voucher.discount.toFixed(2)}`}
+                </span>
+              </div>
+            ))}
 
           <div className="border-t pt-2 mt-2">
             <div className="flex justify-between font-bold">

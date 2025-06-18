@@ -1,14 +1,13 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
-import { faStar, faPaperPlane } from "@fortawesome/free-solid-svg-icons"
+import { faStar, faPaperPlane, faImage, faVideo } from "@fortawesome/free-solid-svg-icons"
 import { Button } from "../ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
-import { useReview } from "../../context/ReviewContext"
-import type { CreateReviewRequest } from "../../types/review"
+import { addReview } from "../../data/review"
+import type { Review } from "../../types/review"
 
 interface ReviewFormProps {
   productId: number
@@ -16,10 +15,11 @@ interface ReviewFormProps {
 }
 
 export function ReviewForm({ productId, onSuccess }: ReviewFormProps) {
-  const { createReview, state } = useReview()
   const [rating, setRating] = useState(0)
   const [hoveredRating, setHoveredRating] = useState(0)
   const [comment, setComment] = useState("")
+  const [image, setImage] = useState("")
+  const [video, setVideo] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -38,19 +38,29 @@ export function ReviewForm({ productId, onSuccess }: ReviewFormProps) {
     setIsSubmitting(true)
 
     try {
-      const reviewData: CreateReviewRequest = {
-        userId: "guest-user", // In a real app, this would come from auth context
-        productId,
-        rating,
+      const newReview: Omit<Review, "id" | "createdAt"> = {
+        userId: "guest-user",
+        productId: productId,
+        rating: rating,
         comment: comment.trim(),
+        video: video.trim() || undefined,
+        image: image.trim() || undefined,
+        isDeleted: false,
+        likeViews: 0,
+        dislikeViews: 0,
       }
 
-      await createReview(reviewData)
+      await addReview(newReview)
 
       // Reset form
       setRating(0)
       setComment("")
+      setImage("")
+      setVideo("")
       onSuccess?.()
+
+      // Refresh the page to show the new review
+      window.location.reload()
     } catch (error) {
       console.error("Failed to submit review:", error)
       alert("Failed to submit review. Please try again.")
@@ -114,11 +124,41 @@ export function ReviewForm({ productId, onSuccess }: ReviewFormProps) {
             </div>
           </div>
 
+          {/* Image URL */}
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              <FontAwesomeIcon icon={faImage} className="h-4 w-4 mr-1" />
+              Image URL (optional)
+            </label>
+            <input
+              type="url"
+              value={image}
+              onChange={(e) => setImage(e.target.value)}
+              placeholder="https://example.com/image.jpg"
+              className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+            />
+          </div>
+
+          {/* Video URL */}
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              <FontAwesomeIcon icon={faVideo} className="h-4 w-4 mr-1" />
+              Video URL (optional)
+            </label>
+            <input
+              type="url"
+              value={video}
+              onChange={(e) => setVideo(e.target.value)}
+              placeholder="https://example.com/video.mp4"
+              className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+            />
+          </div>
+
           {/* Submit Button */}
           <Button
             type="submit"
             className="w-full bg-orange-500 hover:bg-orange-600"
-            disabled={isSubmitting || state.isLoading || rating === 0 || comment.trim().length < 10}
+            disabled={isSubmitting || rating === 0 || comment.trim().length < 10}
           >
             <FontAwesomeIcon icon={faPaperPlane} className="h-4 w-4 mr-2" />
             {isSubmitting ? "Submitting..." : "Submit Review"}

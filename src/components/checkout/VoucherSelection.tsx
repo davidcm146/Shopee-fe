@@ -1,5 +1,3 @@
-"use client"
-
 import { useState } from "react"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import { faTicket, faCheck, faTimes, faTag } from "@fortawesome/free-solid-svg-icons"
@@ -7,26 +5,42 @@ import { Button } from "../ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import { Badge } from "../ui/badge"
 import { getAvailableVouchers, calculateVoucherDiscount } from "../../data/voucher"
-import type { Voucher, AppliedVoucher } from "../../types/voucher"
+import type { Voucher } from "../../types/voucher"
 
 interface VoucherSelectionProps {
   orderAmount: number
-  onVoucherApply: (appliedVoucher: AppliedVoucher | null) => void
-  appliedVoucher: AppliedVoucher | null
+  onVouchersApply: (vouchers: Voucher[]) => void
+  appliedVouchers: Voucher[]
 }
 
-export function VoucherSelection({ orderAmount, onVoucherApply, appliedVoucher }: VoucherSelectionProps) {
+export function VoucherSelection({ orderAmount, onVouchersApply, appliedVouchers }: VoucherSelectionProps) {
   const [isOpen, setIsOpen] = useState(false)
   const availableVouchers = getAvailableVouchers("guest-user", orderAmount)
 
-  const handleVoucherSelect = (voucher: Voucher) => {
-    const discountAmount = calculateVoucherDiscount(voucher, orderAmount)
-    onVoucherApply({ voucher, discountAmount })
-    setIsOpen(false)
+  const handleVoucherToggle = (voucher: Voucher) => {
+    const isAlreadyApplied = appliedVouchers.some((v) => v.id === voucher.id)
+
+    if (isAlreadyApplied) {
+      // Remove voucher
+      const updatedVouchers = appliedVouchers.filter((v) => v.id !== voucher.id)
+      onVouchersApply(updatedVouchers)
+    } else {
+      // Add voucher - check for conflicts
+      let updatedVouchers = [...appliedVouchers]
+
+      // If adding free shipping, remove any existing free shipping vouchers
+      if (voucher.type === "free_shipping") {
+        updatedVouchers = updatedVouchers.filter((v) => v.type !== "free_shipping")
+      }
+
+      updatedVouchers.push(voucher)
+      onVouchersApply(updatedVouchers)
+    }
   }
 
-  const handleRemoveVoucher = () => {
-    onVoucherApply(null)
+  const handleRemoveVoucher = (voucherId: string) => {
+    const updatedVouchers = appliedVouchers.filter((v) => v.id !== voucherId)
+    onVouchersApply(updatedVouchers)
   }
 
   const getVoucherTypeColor = (type: string) => {
@@ -55,6 +69,10 @@ export function VoucherSelection({ orderAmount, onVoucherApply, appliedVoucher }
     }
   }
 
+  const isVoucherApplied = (voucherId: string) => {
+    return appliedVouchers.some((v) => v.id === voucherId)
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -64,36 +82,50 @@ export function VoucherSelection({ orderAmount, onVoucherApply, appliedVoucher }
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {appliedVoucher ? (
-          <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div
-                className={`w-8 h-8 rounded-full ${getVoucherTypeColor(appliedVoucher.voucher.type)} text-white flex items-center justify-center text-sm font-bold`}
-              >
-                {getVoucherIcon(appliedVoucher.voucher.type)}
-              </div>
-              <div>
-                <p className="font-medium text-green-800">{appliedVoucher.voucher.title}</p>
-                <p className="text-sm text-green-600">Saved: ${appliedVoucher.discountAmount.toFixed(2)}</p>
-              </div>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleRemoveVoucher}
-              className="text-green-600 hover:text-green-700 hover:bg-green-100"
-            >
-              <FontAwesomeIcon icon={faTimes} className="h-4 w-4" />
-            </Button>
+        {appliedVouchers.length > 0 ? (
+          <div className="space-y-2 mb-4">
+            {appliedVouchers.map((voucher) => {
+              const discountAmount = calculateVoucherDiscount(voucher, orderAmount)
+              return (
+                <div
+                  key={voucher.id}
+                  className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg"
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`w-8 h-8 rounded-full ${getVoucherTypeColor(voucher.type)} text-white flex items-center justify-center text-sm font-bold`}
+                    >
+                      {getVoucherIcon(voucher.type)}
+                    </div>
+                    <div>
+                      <p className="font-medium text-green-800">{voucher.title}</p>
+                      <p className="text-sm text-green-600">
+                        Saved: {voucher.type === "free_shipping" ? "Free Shipping" : `$${discountAmount.toFixed(2)}`}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleRemoveVoucher(voucher.id)}
+                    className="text-green-600 hover:text-green-700 hover:bg-green-100"
+                  >
+                    <FontAwesomeIcon icon={faTimes} className="h-4 w-4" />
+                  </Button>
+                </div>
+              )
+            })}
           </div>
-        ) : (
-          <Button variant="outline" className="w-full justify-start" onClick={() => setIsOpen(!isOpen)}>
-            <FontAwesomeIcon icon={faTag} className="h-4 w-4 mr-2" />
-            Select Voucher ({availableVouchers.length} available)
-          </Button>
-        )}
+        ) : null}
 
-        {isOpen && !appliedVoucher && (
+        <Button variant="outline" className="w-full justify-start" onClick={() => setIsOpen(!isOpen)}>
+          <FontAwesomeIcon icon={faTag} className="h-4 w-4 mr-2" />
+          {appliedVouchers.length > 0
+            ? `Manage Vouchers (${appliedVouchers.length} applied)`
+            : `Select Vouchers (${availableVouchers.length} available)`}
+        </Button>
+
+        {isOpen && (
           <div className="mt-4 space-y-3 max-h-60 overflow-y-auto">
             {availableVouchers.length === 0 ? (
               <p className="text-center text-muted-foreground py-4">No vouchers available for this order amount</p>
@@ -101,16 +133,19 @@ export function VoucherSelection({ orderAmount, onVoucherApply, appliedVoucher }
               availableVouchers.map((voucher) => {
                 const discountAmount = calculateVoucherDiscount(voucher, orderAmount)
                 const isEligible = orderAmount >= (voucher.minOrderAmount || 0)
+                const isApplied = isVoucherApplied(voucher.id)
 
                 return (
                   <div
                     key={voucher.id}
                     className={`p-3 border rounded-lg cursor-pointer transition-all ${
                       isEligible
-                        ? "border-orange-200 hover:border-orange-300 hover:bg-orange-50"
+                        ? isApplied
+                          ? "border-green-300 bg-green-50"
+                          : "border-orange-200 hover:border-orange-300 hover:bg-orange-50"
                         : "border-gray-200 bg-gray-50 cursor-not-allowed opacity-60"
                     }`}
-                    onClick={() => isEligible && handleVoucherSelect(voucher)}
+                    onClick={() => isEligible && handleVoucherToggle(voucher)}
                   >
                     <div className="flex items-center gap-3">
                       <div
@@ -124,16 +159,25 @@ export function VoucherSelection({ orderAmount, onVoucherApply, appliedVoucher }
                           <Badge variant="outline" className="text-xs">
                             {voucher.type.replace("_", " ")}
                           </Badge>
+                          {isApplied && (
+                            <Badge variant="default" className="text-xs bg-green-500">
+                              Applied
+                            </Badge>
+                          )}
                         </div>
                         <p className="text-sm text-muted-foreground">{voucher.description}</p>
                         <p className="text-xs text-muted-foreground mt-1">{voucher.condition}</p>
-                        {isEligible && discountAmount > 0 && (
+                        {isEligible && discountAmount > 0 && !isApplied && (
                           <p className="text-sm font-medium text-green-600 mt-1">
                             You'll save: ${discountAmount.toFixed(2)}
                           </p>
                         )}
                       </div>
-                      {isEligible && <FontAwesomeIcon icon={faCheck} className="h-4 w-4 text-green-500" />}
+                      {isApplied ? (
+                        <FontAwesomeIcon icon={faCheck} className="h-4 w-4 text-green-500" />
+                      ) : (
+                        isEligible && <FontAwesomeIcon icon={faCheck} className="h-4 w-4 text-gray-300" />
+                      )}
                     </div>
                   </div>
                 )

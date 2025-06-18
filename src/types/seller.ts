@@ -1,14 +1,4 @@
-export interface Seller {
-  id: string
-  name: string
-  email: string
-  phone: string
-  address: string
-  logo?: string
-  description?: string
-  joinDate: Date
-  status: "active" | "inactive" | "pending"
-}
+
 
 export interface ProductCategory {
   id: string

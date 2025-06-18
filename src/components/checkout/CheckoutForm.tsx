@@ -1,14 +1,12 @@
-"use client"
-
 import type React from "react"
-
 import { useState } from "react"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
-import { faMapMarkerAlt, faCreditCard, faLock } from "@fortawesome/free-solid-svg-icons"
+import { faMapMarkerAlt, faCreditCard, faLock, faMoneyBill } from "@fortawesome/free-solid-svg-icons"
 import { Button } from "../ui/button"
-import { Input } from "../ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
-import type { CheckoutData } from "../../types/order"
+import type { CheckoutData } from "@/types/order"
+import type { PaymentMethod } from "@/types/payment"
+import { faPaypal } from "@fortawesome/free-brands-svg-icons"
 
 interface CheckoutFormProps {
   onSubmit: (data: CheckoutData) => Promise<void>
@@ -18,13 +16,7 @@ interface CheckoutFormProps {
 export function CheckoutForm({ onSubmit, isLoading = false }: CheckoutFormProps) {
   const [formData, setFormData] = useState<CheckoutData>({
     deliveryAddress: "",
-    paymentMethod: "credit_card",
-    paymentDetails: {
-      cardNumber: "",
-      expiryDate: "",
-      cvv: "",
-      cardholderName: "",
-    },
+    paymentMethod: "paypal",
   })
 
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -32,7 +24,6 @@ export function CheckoutForm({ onSubmit, isLoading = false }: CheckoutFormProps)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
-
     try {
       await onSubmit(formData)
     } catch (error) {
@@ -40,6 +31,13 @@ export function CheckoutForm({ onSubmit, isLoading = false }: CheckoutFormProps)
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  const handlePaymentMethodChange = (method: PaymentMethod) => {
+    setFormData((prev) => ({
+      ...prev,
+      paymentMethod: method,
+    }))
   }
 
   return (
@@ -56,7 +54,7 @@ export function CheckoutForm({ onSubmit, isLoading = false }: CheckoutFormProps)
           <textarea
             value={formData.deliveryAddress}
             onChange={(e) => setFormData((prev) => ({ ...prev, deliveryAddress: e.target.value }))}
-            placeholder="Enter your complete delivery address"
+            placeholder="Enter your delivery address"
             className="w-full min-h-[100px] p-3 border rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-orange-500"
             required
           />
@@ -72,112 +70,25 @@ export function CheckoutForm({ onSubmit, isLoading = false }: CheckoutFormProps)
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-3">
-            <label className="flex items-center gap-3">
+          {[
+            { id: "paypal", label: "PayPal", icon: faPaypal },
+            { id: "cash_on_delivery", label: "Cash on Delivery", icon: faMoneyBill },
+          ].map((method) => (
+            <label key={method.id} className="flex items-center gap-3 cursor-pointer">
               <input
                 type="radio"
                 name="paymentMethod"
-                value="credit_card"
-                checked={formData.paymentMethod === "credit_card"}
-                onChange={(e) => setFormData((prev) => ({ ...prev, paymentMethod: e.target.value }))}
+                value={method.id}
+                checked={formData.paymentMethod === method.id}
+                onChange={() => handlePaymentMethodChange(method.id as PaymentMethod)}
                 className="text-orange-500"
               />
-              <span>Credit/Debit Card</span>
+              <span className="flex items-center gap-2">
+                <FontAwesomeIcon icon={method.icon} className="h-5 w-5" />
+                {method.label}
+              </span>
             </label>
-            <label className="flex items-center gap-3">
-              <input
-                type="radio"
-                name="paymentMethod"
-                value="paypal"
-                checked={formData.paymentMethod === "paypal"}
-                onChange={(e) => setFormData((prev) => ({ ...prev, paymentMethod: e.target.value }))}
-                className="text-orange-500"
-              />
-              <span>PayPal</span>
-            </label>
-            <label className="flex items-center gap-3">
-              <input
-                type="radio"
-                name="paymentMethod"
-                value="cash_on_delivery"
-                checked={formData.paymentMethod === "cash_on_delivery"}
-                onChange={(e) => setFormData((prev) => ({ ...prev, paymentMethod: e.target.value }))}
-                className="text-orange-500"
-              />
-              <span>Cash on Delivery</span>
-            </label>
-          </div>
-
-          {/* Credit Card Details */}
-          {formData.paymentMethod === "credit_card" && (
-            <div className="space-y-4 pt-4 border-t">
-              <div>
-                <label className="block text-sm font-medium mb-2">Cardholder Name</label>
-                <Input
-                  type="text"
-                  value={formData.paymentDetails?.cardholderName || ""}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      paymentDetails: { ...prev.paymentDetails, cardholderName: e.target.value },
-                    }))
-                  }
-                  placeholder="John Doe"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Card Number</label>
-                <Input
-                  type="text"
-                  value={formData.paymentDetails?.cardNumber || ""}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      paymentDetails: { ...prev.paymentDetails, cardNumber: e.target.value },
-                    }))
-                  }
-                  placeholder="1234 5678 9012 3456"
-                  maxLength={19}
-                  required
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Expiry Date</label>
-                  <Input
-                    type="text"
-                    value={formData.paymentDetails?.expiryDate || ""}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        paymentDetails: { ...prev.paymentDetails, expiryDate: e.target.value },
-                      }))
-                    }
-                    placeholder="MM/YY"
-                    maxLength={5}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">CVV</label>
-                  <Input
-                    type="text"
-                    value={formData.paymentDetails?.cvv || ""}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        paymentDetails: { ...prev.paymentDetails, cvv: e.target.value },
-                      }))
-                    }
-                    placeholder="123"
-                    maxLength={4}
-                    required
-                  />
-                </div>
-              </div>
-            </div>
-          )}
+          ))}
         </CardContent>
       </Card>
 

@@ -14,20 +14,39 @@ import {
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Loader2, Edit } from "lucide-react"
-import { updateOrderStatusInDb, getValidStatusTransitions } from "@/data/order"
+import { updateOrderStatus } from "@/data/order"
 import type { OrderStatus } from "@/types/order"
 
 interface OrderStatusUpdateProps {
   orderId: string
   currentStatus: OrderStatus
-  sellerId: string
   onStatusUpdated?: (orderId: string, newStatus: OrderStatus) => void
 }
 
-export function OrderStatusUpdate({ orderId, currentStatus, sellerId, onStatusUpdated }: OrderStatusUpdateProps) {
+export function OrderStatusUpdate({ orderId, currentStatus, onStatusUpdated }: OrderStatusUpdateProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [selectedStatus, setSelectedStatus] = useState<OrderStatus>(currentStatus)
   const [isUpdating, setIsUpdating] = useState(false)
+
+  // Define valid status transitions
+  const getValidStatusTransitions = (status: OrderStatus): OrderStatus[] => {
+    switch (status) {
+      case "pending":
+        return ["confirmed", "cancelled"]
+      case "confirmed":
+        return ["packed", "cancelled"]
+      case "packed":
+        return ["shipped"]
+      case "shipped":
+        return ["delivered"]
+      case "delivered":
+        return [] // Final state
+      case "cancelled":
+        return [] // Final state
+      default:
+        return []
+    }
+  }
 
   const availableStatuses = getValidStatusTransitions(currentStatus)
 
@@ -51,16 +70,13 @@ export function OrderStatusUpdate({ orderId, currentStatus, sellerId, onStatusUp
 
     setIsUpdating(true)
     try {
-      const result = await updateOrderStatusInDb(orderId, selectedStatus, sellerId)
-
-      if (result) {
-        onStatusUpdated?.(orderId, selectedStatus)
-        setIsOpen(false)
-      } else {
-        console.log("Fail to update order");
-      }
+      await updateOrderStatus(orderId, selectedStatus)
+      onStatusUpdated?.(orderId, selectedStatus)
+      setIsOpen(false)
+      // Refresh page to show updated status
+      window.location.reload()
     } catch (error) {
-      console.log(error);
+      console.error("Failed to update order status:", error)
     } finally {
       setIsUpdating(false)
     }

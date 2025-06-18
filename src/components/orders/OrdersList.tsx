@@ -32,7 +32,7 @@ export function OrdersList({ orders, isLoading = false }: OrdersListProps) {
   return (
     <div className="space-y-4">
       {orders.map((order) => (
-        <OrderItem key={order.orderId} order={order} />
+        <OrderItem key={order.id} order={order} />
       ))}
     </div>
   )

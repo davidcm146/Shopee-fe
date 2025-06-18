@@ -1,289 +1,338 @@
-"use server"
+import type { Order, OrderItem, OrderStatus } from "../types/order"
+import type { Voucher } from "@/types/voucher"
 
-import type { Order, OrderStatus } from "@/types/order"
+// Simple ID generation function
+function generateId(): string {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2)
+}
 
-// Mock data - in a real app, this would come from a database
-const mockOrders: Order[] = [
+// Sample vouchers data
+const sampleVouchers: Voucher[] = [
   {
-    orderId: "ORD-001",
-    buyerId: "buyer1",
-    sellerId: "seller1",
-    paymentId: "pay1",
-    deliveryAddress: "123 Main St, City",
-    status: "pending",
-    totalPrice: 299.99,
-    subtotal: 279.99,
-    tax: 20.0,
-    shipping: 0,
-    voucherDiscount: 0,
-    createdAt: new Date("2024-01-15T10:30:00"),
+    id: "voucher_001",
+    buyerId: "guest-user",
+    discount: 5.0,
+    type: "fixed_amount",
+    startDate: new Date("2024-01-01T00:00:00Z"),
+    endDate: new Date("2024-12-31T23:59:59Z"),
+    status: "used",
+    condition: "Minimum order of $50",
+    title: "New User Discount",
+    description: "Get $5 off your first order",
+    minOrderAmount: 50,
+    maxDiscountAmount: 5,
+  },
+  {
+    id: "voucher_002",
+    buyerId: "guest-user",
+    discount: 10,
+    type: "percentage",
+    startDate: new Date("2024-01-01T00:00:00Z"),
+    endDate: new Date("2024-12-31T23:59:59Z"),
+    status: "used",
+    condition: "Minimum order of $100",
+    title: "Welcome Discount",
+    description: "Get 10% off orders over $100",
+    minOrderAmount: 100,
+    maxDiscountAmount: 50,
+  },
+  {
+    id: "voucher_003",
+    buyerId: "guest-user",
+    discount: 0,
+    type: "free_shipping",
+    startDate: new Date("2024-01-01T00:00:00Z"),
+    endDate: new Date("2024-12-31T23:59:59Z"),
+    status: "used",
+    condition: "Any order amount",
+    title: "Free Shipping",
+    description: "Free shipping on any order",
+    minOrderAmount: 0,
+  },
+]
+
+// Sample orders data using YOUR Order interface structure with complete Voucher objects
+const sampleOrders: Order[] = [
+  {
+    id: "order_001",
+    buyerId: "guest-user",
+    paymentId: "payment_001",
+    deliveryAddress: "123 Main St, City, State 12345",
+    status: "delivered",
+    totalPrice: 609.99,
+    subtotal: 599.99,
+    shipping: 10.0,
+    vouchers: [],
+    createdAt: new Date("2024-01-15T10:30:00Z"),
     items: [
       {
-        id: "item1",
-        orderId: "ORD-001",
+        id: "item_001",
         productId: 1,
-        quantity: 2,
-        unitPrice: 139.99,
-        createdAt: new Date("2024-01-15T10:30:00"),
-        product: { name: "Wireless Bluetooth Headphones" },
-        selectedVariant: "Black",
+        quantity: 1,
+        unitPrice: 599.99,
+        selectedVariant: "Space Gray",
+        createdAt: new Date("2024-01-15T10:30:00Z"),
       },
     ],
   },
   {
-    orderId: "ORD-002",
-    buyerId: "buyer2",
-    sellerId: "seller1",
-    paymentId: "pay2",
-    deliveryAddress: "456 Oak Ave, Town",
-    status: "confirmed",
-    totalPrice: 89.99,
-    subtotal: 79.99,
-    tax: 10.0,
-    shipping: 0,
-    voucherDiscount: 5.0,
-    voucherId: "voucher1",
-    voucherCode: "SAVE5",
-    createdAt: new Date("2024-01-15T09:15:00"),
+    id: "order_002",
+    buyerId: "guest-user",
+    paymentId: "payment_002",
+    deliveryAddress: "456 Oak Ave, Town, State 67890",
+    status: "shipped",
+    totalPrice: 204.99,
+    subtotal: 199.99,
+    shipping: 10.0,
+    vouchers: [
+      {
+        id: "voucher_001",
+        buyerId: "guest-user",
+        discount: 5.0,
+        type: "fixed_amount",
+        startDate: new Date("2024-01-01T00:00:00Z"),
+        endDate: new Date("2024-12-31T23:59:59Z"),
+        status: "used",
+        condition: "Minimum order of $50",
+        title: "New User Discount",
+        description: "Get $5 off your first order",
+        minOrderAmount: 50,
+        maxDiscountAmount: 5,
+      },
+    ],
+    createdAt: new Date("2024-02-01T14:20:00Z"),
     items: [
       {
-        id: "item2",
-        orderId: "ORD-002",
+        id: "item_002",
         productId: 2,
         quantity: 1,
-        unitPrice: 79.99,
-        createdAt: new Date("2024-01-15T09:15:00"),
-        product: { name: "Smart Phone Case" },
-        selectedVariant: "Blue",
+        unitPrice: 199.99,
+        selectedVariant: "Black",
+        createdAt: new Date("2024-02-01T14:20:00Z"),
       },
     ],
   },
   {
-    orderId: "ORD-003",
-    buyerId: "buyer3",
-    sellerId: "seller1",
-    paymentId: "pay3",
-    deliveryAddress: "789 Pine St, Village",
-    status: "shipped",
+    id: "order_003",
+    buyerId: "guest-user",
+    paymentId: "payment_003",
+    deliveryAddress: "789 Pine St, Village, State 13579",
+    status: "pending",
     totalPrice: 45.99,
     subtotal: 39.99,
-    tax: 6.0,
-    shipping: 0,
-    createdAt: new Date("2024-01-14T16:45:00"),
+    shipping: 6.0,
+    vouchers: [],
+    createdAt: new Date("2024-02-10T09:15:00Z"),
     items: [
       {
-        id: "item3",
-        orderId: "ORD-003",
+        id: "item_003",
         productId: 3,
-        quantity: 3,
-        unitPrice: 13.33,
-        createdAt: new Date("2024-01-14T16:45:00"),
-        product: { name: "USB-C Charging Cable" },
-        selectedVariant: "White",
-      },
-    ],
-  },
-  {
-    orderId: "ORD-004",
-    buyerId: "buyer4",
-    sellerId: "seller1",
-    paymentId: "pay4",
-    deliveryAddress: "321 Elm St, City",
-    status: "delivered",
-    totalPrice: 159.99,
-    subtotal: 149.99,
-    tax: 10.0,
-    shipping: 0,
-    createdAt: new Date("2024-01-14T11:20:00"),
-    items: [
-      {
-        id: "item4",
-        orderId: "ORD-004",
-        productId: 4,
         quantity: 1,
-        unitPrice: 149.99,
-        createdAt: new Date("2024-01-14T11:20:00"),
-        product: { name: "Laptop Stand" },
-        selectedVariant: "Silver",
+        unitPrice: 39.99,
+        selectedVariant: "Blue",
+        createdAt: new Date("2024-02-10T09:15:00Z"),
       },
     ],
   },
   {
-    orderId: "ORD-005",
-    buyerId: "buyer5",
-    sellerId: "seller1",
-    paymentId: "pay5",
-    deliveryAddress: "654 Maple Dr, Town",
-    status: "cancelled",
-    totalPrice: 199.99,
-    subtotal: 189.99,
-    tax: 10.0,
+    id: "order_004",
+    buyerId: "guest-user",
+    paymentId: "payment_004",
+    deliveryAddress: "321 Elm St, City, State 24680",
+    status: "confirmed",
+    totalPrice: 119.99,
+    subtotal: 119.99,
     shipping: 0,
-    voucherDiscount: 10.0,
-    voucherId: "voucher2",
-    voucherCode: "SAVE10",
-    createdAt: new Date("2024-01-13T14:30:00"),
+    vouchers: [
+      {
+        id: "voucher_003",
+        buyerId: "guest-user",
+        discount: 0,
+        type: "free_shipping",
+        startDate: new Date("2024-01-01T00:00:00Z"),
+        endDate: new Date("2024-12-31T23:59:59Z"),
+        status: "used",
+        condition: "Any order amount",
+        title: "Free Shipping",
+        description: "Free shipping on any order",
+        minOrderAmount: 0,
+      },
+    ],
+    createdAt: new Date("2024-02-05T16:45:00Z"),
     items: [
       {
-        id: "item5",
-        orderId: "ORD-005",
+        id: "item_004",
+        productId: 4,
+        quantity: 2,
+        unitPrice: 59.99,
+        selectedVariant: "White",
+        createdAt: new Date("2024-02-05T16:45:00Z"),
+      },
+    ],
+  },
+  {
+    id: "order_005",
+    buyerId: "guest-user",
+    paymentId: "payment_005",
+    deliveryAddress: "654 Maple Dr, Town, State 97531",
+    status: "packed",
+    totalPrice: 81.99,
+    subtotal: 89.99,
+    shipping: 10.0,
+    vouchers: [
+      {
+        id: "voucher_002",
+        buyerId: "guest-user",
+        discount: 10,
+        type: "percentage",
+        startDate: new Date("2024-01-01T00:00:00Z"),
+        endDate: new Date("2024-12-31T23:59:59Z"),
+        status: "used",
+        condition: "Minimum order of $100",
+        title: "Welcome Discount",
+        description: "Get 10% off orders over $100",
+        minOrderAmount: 100,
+        maxDiscountAmount: 50,
+      },
+    ],
+    createdAt: new Date("2024-02-08T11:30:00Z"),
+    items: [
+      {
+        id: "item_005",
         productId: 5,
         quantity: 1,
-        unitPrice: 189.99,
-        createdAt: new Date("2024-01-13T14:30:00"),
-        product: { name: "Wireless Mouse" },
-        selectedVariant: "Black",
+        unitPrice: 89.99,
+        selectedVariant: "Red",
+        createdAt: new Date("2024-02-08T11:30:00Z"),
       },
     ],
   },
   {
-    orderId: "ORD-006",
-    buyerId: "buyer6",
-    sellerId: "seller1",
-    paymentId: "pay6",
-    deliveryAddress: "987 Cedar Ln, Village",
-    status: "packed",
-    totalPrice: 79.99,
-    subtotal: 69.99,
-    tax: 10.0,
-    shipping: 0,
-    createdAt: new Date("2024-01-16T14:20:00"),
+    id: "order_006",
+    buyerId: "guest-user",
+    paymentId: "payment_006",
+    deliveryAddress: "987 Cedar Ln, Village, State 86420",
+    status: "cancelled",
+    totalPrice: 299.99,
+    subtotal: 289.99,
+    shipping: 10.0,
+    vouchers: [],
+    createdAt: new Date("2024-01-28T13:15:00Z"),
     items: [
       {
-        id: "item6",
-        orderId: "ORD-006",
+        id: "item_006",
         productId: 6,
         quantity: 1,
-        unitPrice: 69.99,
-        createdAt: new Date("2024-01-16T14:20:00"),
-        product: { name: "Phone Charger" },
-        selectedVariant: "USB-C",
+        unitPrice: 289.99,
+        selectedVariant: "Black",
+        createdAt: new Date("2024-01-28T13:15:00Z"),
       },
     ],
   },
 ]
 
-// Server Actions
-export async function updateOrderStatusInDb(orderId: string, newStatus: OrderStatus, sellerId: string) {
-  try {
-    // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 800))
+// In-memory orders storage
+let ordersData: Order[] = [...sampleOrders]
 
-    // Find the order
-    const orderIndex = mockOrders.findIndex((order) => order.orderId === orderId)
-
-    if (orderIndex === -1) {
-      return false
-    }
-
-    const order = mockOrders[orderIndex]
-
-    // Check if seller owns the order
-    if (order.sellerId !== sellerId) {
-      return false
-    }
-
-    // Validate status transitions
-    const validTransitions: Record<OrderStatus, OrderStatus[]> = {
-      pending: ["confirmed", "cancelled"],
-      confirmed: ["packed", "cancelled"],
-      packed: ["shipped", "cancelled"],
-      shipped: ["delivered"],
-      delivered: [], // Final state
-      cancelled: [], // Final state
-    }
-
-    const allowedStatuses = validTransitions[order.status] || []
-
-    if (!allowedStatuses.includes(newStatus)) {
-      return false
-    }
-
-    // Update the order status
-    mockOrders[orderIndex] = {
-      ...order,
-      status: newStatus,
-    }
-
-    return true
-  } catch (error) {
-    console.error("Error updating order status:", error)
-    return false
-  }
-}
-
-// Data fetching functions
-export async function getOrdersBySeller(sellerId: string): Promise<Order[]> {
-  // Simulate API delay
+// Create a new order
+export async function createOrder(orderData: {
+  buyerId: string
+  paymentId: string
+  deliveryAddress: string
+  subtotal: number
+  shipping: number
+  vouchers: Voucher[]
+  items: Array<{
+    productId: number
+    quantity: number
+    unitPrice: number
+    selectedVariant?: string
+  }>
+}): Promise<Order> {
   await new Promise((resolve) => setTimeout(resolve, 500))
 
-  return mockOrders.filter((order) => order.sellerId === sellerId)
-}
+  const now = new Date()
+  const orderId = generateId()
 
-export async function getOrderById(orderId: string): Promise<Order | null> {
-  await new Promise((resolve) => setTimeout(resolve, 300))
+  const orderItems: OrderItem[] = orderData.items.map((item) => ({
+    id: generateId(),
+    productId: item.productId,
+    quantity: item.quantity,
+    unitPrice: item.unitPrice,
+    createdAt: now,
+    selectedVariant: item.selectedVariant,
+  }))
 
-  return mockOrders.find((order) => order.orderId === orderId) || null
-}
+  let totalPrice = orderData.subtotal + orderData.shipping
 
-export async function getOrdersByStatus(sellerId: string, status: OrderStatus): Promise<Order[]> {
-  await new Promise((resolve) => setTimeout(resolve, 400))
-
-  return mockOrders.filter((order) => order.sellerId === sellerId && order.status === status)
-}
-
-// Utility functions (these don't need to be server actions)
-export function getValidStatusTransitions(currentStatus: OrderStatus): OrderStatus[] {
-  const transitions: Record<OrderStatus, OrderStatus[]> = {
-    pending: ["confirmed", "cancelled"],
-    confirmed: ["packed", "cancelled"],
-    shipped: ["delivered"],
-    packed: ["shipped", "cancelled"],
-    delivered: [],
-    cancelled: [],
-  }
-
-  return transitions[currentStatus] || []
-}
-
-export function getOrderStats(orders: Order[]) {
-  const stats = {
-    total: orders.length,
-    pending: orders.filter((o) => o.status === "pending").length,
-    confirmed: orders.filter((o) => o.status === "confirmed").length,
-    packed: orders.filter((o) => o.status === "packed").length,
-    shipped: orders.filter((o) => o.status === "shipped").length,
-    delivered: orders.filter((o) => o.status === "delivered").length,
-    cancelled: orders.filter((o) => o.status === "cancelled").length,
-    totalRevenue: orders.filter((o) => o.status !== "cancelled").reduce((sum, order) => sum + order.totalPrice, 0),
-    averageOrderValue: 0,
-  }
-
-  stats.averageOrderValue = stats.total > 0 ? stats.totalRevenue / (stats.total - stats.cancelled) : 0
-
-  return stats
-}
-
-export function searchOrders(orders: Order[], searchTerm: string): Order[] {
-  if (!searchTerm) return orders
-
-  const term = searchTerm.toLowerCase()
-
-  return orders.filter(
-    (order) =>
-      order.orderId.toLowerCase().includes(term) ||
-      order.buyerId.toLowerCase().includes(term) ||
-      order.deliveryAddress.toLowerCase().includes(term) ||
-      order.items.some(
-        (item) =>
-          item.product?.name?.toLowerCase().includes(term) || item.selectedVariant?.toLowerCase().includes(term),
-      ),
-  )
-}
-
-export function filterOrdersByDateRange(orders: Order[], startDate: Date, endDate: Date): Order[] {
-  return orders.filter((order) => {
-    const orderDate = new Date(order.createdAt)
-    return orderDate >= startDate && orderDate <= endDate
+  orderData.vouchers.forEach((voucher) => {
+    if (voucher.type === "fixed_amount") {
+      totalPrice -= voucher.discount
+    } else if (voucher.type === "percentage") {
+      const discountAmount = (orderData.subtotal * voucher.discount) / 100
+      const maxDiscount = voucher.maxDiscountAmount || discountAmount
+      totalPrice -= Math.min(discountAmount, maxDiscount)
+    } else if (voucher.type === "free_shipping") {
+      totalPrice -= orderData.shipping
+    }
   })
+
+  totalPrice = Math.max(0, totalPrice)
+
+  const newOrder: Order = {
+    id: orderId,
+    buyerId: orderData.buyerId,
+    paymentId: orderData.paymentId,
+    deliveryAddress: orderData.deliveryAddress,
+    status: "pending",
+    totalPrice,
+    subtotal: orderData.subtotal,
+    shipping: orderData.shipping,
+    vouchers: orderData.vouchers,
+    createdAt: now,
+    items: orderItems,
+  }
+
+  ordersData.unshift(newOrder)
+
+  return newOrder
+}
+
+// Update order status
+export async function updateOrderStatus(orderId: string, status: OrderStatus): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 300))
+  const orderIndex = ordersData.findIndex((order) => order.id === orderId)
+  if (orderIndex !== -1) {
+    ordersData[orderIndex] = { ...ordersData[orderIndex], status }
+  }
+}
+
+// Cancel an order
+export async function cancelOrder(orderId: string): Promise<void> {
+  await updateOrderStatus(orderId, "cancelled")
+}
+
+// Get order by ID
+export function getOrderById(orderId: string): Order | undefined {
+  return ordersData.find((order) => order.id === orderId)
+}
+
+// Get orders for a specific user
+export function getUserOrders(userId: string): Order[] {
+  return ordersData.filter((order) => order.buyerId === userId)
+}
+
+// Get all orders
+export function getAllOrders(): Order[] {
+  return ordersData
+}
+
+// Get available vouchers for a user
+export function getUserVouchers(userId: string): Voucher[] {
+  return sampleVouchers.filter((voucher) => voucher.buyerId === userId)
+}
+
+// Reset to sample data
+export function resetToSampleData(): void {
+  ordersData = [...sampleOrders]
 }

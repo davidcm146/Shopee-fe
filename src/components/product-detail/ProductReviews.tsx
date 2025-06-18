@@ -4,31 +4,29 @@ import { useState } from "react"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import { faStar, faPlus } from "@fortawesome/free-solid-svg-icons"
 import { Button } from "../ui/button"
-import { ReviewStats } from "../reviews/ReviewStats"
 import { ReviewForm } from "../reviews/ReviewForm"
+import { ReviewStats } from "../reviews/ReviewStats"
 import { ReviewList } from "../reviews/ReviewList"
-import { useReview } from "../../context/ReviewContext"
-import { calculateReviewStats } from "../../data/review"
+import { getReviewsByProductId, calculateReviewStats } from "../../data/reviews"
+import type { Review } from "../../types/review"
 
 interface ProductReviewsProps {
   productId: number
 }
 
 export function ProductReviews({ productId }: ProductReviewsProps) {
-  const { getReviewsByProductId, hasUserReviewed, getUserReviewForProduct } = useReview()
   const [showReviewForm, setShowReviewForm] = useState(false)
 
   const currentUserId = "guest-user" // In a real app, this would come from auth context
-  const reviews = getReviewsByProductId(productId)
-  const stats = calculateReviewStats(productId)
-  const userHasReviewed = hasUserReviewed(currentUserId, productId)
-  const userReview = getUserReviewForProduct(currentUserId, productId)
+  const allReviews = getReviewsByProductId(productId)
 
-  // Mark user's own review
-  const reviewsWithOwnership = reviews.map((review) => ({
-    ...review,
-    isOwned: review.userId === currentUserId,
-  }))
+  // Filter out deleted reviews for display
+  const activeReviews = allReviews.filter((review: Review) => !review.isDeleted)
+  const stats = calculateReviewStats(productId)
+
+  // Check if user has already reviewed this product
+  const userHasReviewed = activeReviews.some((review) => review.userId === currentUserId)
+  const userReview = activeReviews.find((review) => review.userId === currentUserId)
 
   return (
     <div className="mb-10">
@@ -42,12 +40,14 @@ export function ProductReviews({ productId }: ProductReviewsProps) {
         )}
       </div>
 
-      {/* Review Stats */}
-      <div className="mb-6">
-        <ReviewStats stats={stats} />
-      </div>
+      {/* Review Stats - Always show if there are reviews */}
+      {activeReviews.length > 0 && (
+        <div className="mb-6">
+          <ReviewStats stats={stats} />
+        </div>
+      )}
 
-      {/* Review Form */}
+      {/* Review Form - Only show when user clicks "Write a Review" */}
       {showReviewForm && !userHasReviewed && (
         <div className="mb-6">
           <ReviewForm productId={productId} onSuccess={() => setShowReviewForm(false)} />
@@ -55,7 +55,7 @@ export function ProductReviews({ productId }: ProductReviewsProps) {
       )}
 
       {/* User's existing review notice */}
-      {userHasReviewed && userReview && (
+      {userHasReviewed && userReview && !userReview.isDeleted && (
         <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
           <div className="flex items-center gap-2 mb-2">
             <FontAwesomeIcon icon={faStar} className="h-4 w-4 text-orange-500" />
@@ -67,8 +67,8 @@ export function ProductReviews({ productId }: ProductReviewsProps) {
         </div>
       )}
 
-      {/* Reviews List */}
-      <ReviewList reviews={reviewsWithOwnership} currentUserId={currentUserId} />
+      {/* Reviews List - Always show, even if user hasn't written a review */}
+      <ReviewList reviews={activeReviews} currentUserId={currentUserId} />
     </div>
   )
 }

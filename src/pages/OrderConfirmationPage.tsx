@@ -5,11 +5,10 @@ import { ConfirmationHeader } from "../components/order/ConfirmationHeader"
 import { OrderDetailsCard } from "../components/order/OrderDetailCard"
 import { ConfirmationActions } from "../components/order/ConfirmationActions"
 import { OrderNotFound } from "../components/order/OrderNotFound"
-import { useOrder } from "../context/OrderContext"
+import { getOrderById } from "../data/order"
 
 export function OrderConfirmationPage() {
   const { orderId } = useParams<{ orderId: string }>()
-  const { getOrderById } = useOrder()
 
   const order = orderId ? getOrderById(orderId) : null
 

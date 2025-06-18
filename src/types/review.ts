@@ -1,17 +1,15 @@
 export interface Review {
-  reviewId: string
+  id: string
   userId: string
   productId: number // Using number to match our existing product IDs
   rating: number // 1-5 stars
   comment: string
+  video?: string
+  image?: string
+  isDeleted: boolean
+  likeViews: number
+  dislikeViews: number
   createdAt: Date
-
-  // Additional fields for UI display
-  user?: {
-    name: string
-    avatar?: string
-  }
-  isOwned?: boolean // If the current user owns this review
 }
 
 export interface CreateReviewRequest {
@@ -29,7 +27,7 @@ export interface UpdateReviewRequest {
 
 export interface ReviewFilters {
   rating: number // 0 = all, 1-5 = specific rating
-  sortBy: "newest" | "oldest" | "rating_high" | "rating_low"
+  sortBy: "newest" | "oldest" | "rating_high" | "rating_low" | "most_liked" | "most_disliked"
 }
 
 export interface ReviewStats {

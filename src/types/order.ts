@@ -1,31 +1,25 @@
+import type { Voucher } from "./voucher"
+
 export interface Order {
-  orderId: string
+  id: string
   buyerId: string
-  sellerId: string
-  paymentId: string
+  paymentId?: string
   deliveryAddress: string
   status: OrderStatus
   totalPrice: number
   subtotal: number
-  tax: number
   shipping: number
-  voucherDiscount?: number
-  voucherId?: string
-  voucherCode?: string
   createdAt: Date
+  vouchers: Voucher[]
   items: OrderItem[]
 }
 
 export interface OrderItem {
   id: string
-  orderId: string
-  productId: number // Using number to match our existing product IDs
+  productId: number
   quantity: number
   unitPrice: number
   createdAt: Date
-
-  // Additional fields for UI display
-  product?: any
   selectedVariant?: string
 }
 
