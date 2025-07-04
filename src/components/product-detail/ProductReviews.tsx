@@ -11,7 +11,7 @@ import { getReviewsByProductId, calculateReviewStats } from "../../data/reviews"
 import type { Review } from "../../types/review"
 
 interface ProductReviewsProps {
-  productId: number
+  productId: string
 }
 
 export function ProductReviews({ productId }: ProductReviewsProps) {

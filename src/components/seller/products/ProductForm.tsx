@@ -1,5 +1,3 @@
-"use client"
-
 import type React from "react"
 import { useState, useEffect } from "react"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
@@ -7,13 +5,13 @@ import { faPlus, faTrash, faSave, faUpload } from "@fortawesome/free-solid-svg-i
 import { Button } from "../../ui/button"
 import { Input } from "../../ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card"
-import type { Product } from "../../../types/product"
+import type { Product } from "@/types/product"
 
 interface ProductFormProps {
   product?: Product | null
   categories: string[]
   onCancel: () => void
-  onSave: (productData: Partial<Product>) => Promise<void>
+  onSave: (productData: Product) => Promise<void>
 }
 
 export function ProductForm({ product, categories, onCancel, onSave }: ProductFormProps) {
@@ -22,100 +20,72 @@ export function ProductForm({ product, categories, onCancel, onSave }: ProductFo
 
   const isEditing = !!product
 
-  // Form state
+  const defaultCategory = categories[0] || ""
   const [formData, setFormData] = useState<Partial<Product>>({
     name: "",
     description: "",
     price: 0,
-    originalPrice: 0,
     images: [],
-    categoryId: categories[0] || "1",
+    category: defaultCategory as Product["category"],
     stock: 0,
     features: [],
-    specifications: {},
-    variants: [],
+    ratings: 0,
   })
 
-  // Additional form states
   const [newSpecKey, setNewSpecKey] = useState("")
   const [newSpecValue, setNewSpecValue] = useState("")
   const [newFeature, setNewFeature] = useState("")
-  const [newVariant, setNewVariant] = useState("")
 
-  // Initialize form data when product changes
   useEffect(() => {
     if (product) {
-      setFormData({
-        id: product.id,
-        name: product.name,
-        description: product.description || "",
-        price: product.price,
-        originalPrice: product.originalPrice || 0,
-        images: product.images,
-        categoryId: product.categoryId,
-        stock: product.stock || 0,
-        features: product.features || [],
-        specifications: product.specifications || {},
-        variants: product.variants || [],
-      })
+      setFormData(product)
     } else {
-      // Reset form for new product
-      const defaultCategory = categories.length > 0 ? categories[0] : "1"
       setFormData({
         name: "",
         description: "",
         price: 0,
-        originalPrice: 0,
         images: [],
-        categoryId: defaultCategory,
+        category: (categories[0] || "fashion") as Product["category"],
         stock: 0,
         features: [],
-        specifications: {},
-        variants: [],
+        ratings: 0,
       })
     }
     setErrors({})
   }, [product, categories])
 
-  // Form validation
+
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
 
     if (!formData.name?.trim()) newErrors.name = "Product name is required"
     if (!formData.price || formData.price <= 0) newErrors.price = "Price must be greater than 0"
-    if (formData.originalPrice && formData.originalPrice < 0)
-      newErrors.originalPrice = "Original price cannot be negative"
-    if (formData.stock === undefined || formData.stock < 0) newErrors.stock = "Stock cannot be negative"
-    if (!formData.categoryId) newErrors.categoryId = "Category is required"
+    if (formData.stock === undefined || formData.stock < 0) {
+      newErrors.stock = "Stock is required and cannot be negative"
+    }
+    if (!formData.category) newErrors.category = "Category is required"
     if (!formData.images?.length) newErrors.images = "At least one image is required"
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
 
-  // Handle form submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!validateForm()) {
-      return
-    }
+    if (!validateForm()) return
 
     setIsSubmitting(true)
-
     try {
-      await onSave(formData)
+      await onSave(formData as Product)
     } catch (error) {
       console.error("Failed to save product:", error)
-      setErrors({
-        submit: "Failed to save product. Please try again.",
-      })
+      setErrors({ submit: "Failed to save product. Please try again." })
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  // Form handlers
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target
     setFormData((prev) => ({
@@ -139,40 +109,12 @@ export function ProductForm({ product, categories, onCancel, onSave }: ProductFo
     }))
   }
 
-  const handleAddSpecification = () => {
-    if (!newSpecKey.trim() || !newSpecValue.trim()) return
-
-    setFormData((prev) => ({
-      ...prev,
-      specifications: {
-        ...(prev.specifications || {}),
-        [newSpecKey]: newSpecValue,
-      },
-    }))
-
-    setNewSpecKey("")
-    setNewSpecValue("")
-  }
-
-  const handleRemoveSpecification = (key: string) => {
-    setFormData((prev) => {
-      const newSpecs = { ...(prev.specifications || {}) }
-      delete newSpecs[key]
-      return {
-        ...prev,
-        specifications: newSpecs,
-      }
-    })
-  }
-
   const handleAddFeature = () => {
     if (!newFeature.trim()) return
-
     setFormData((prev) => ({
       ...prev,
       features: [...(prev.features || []), newFeature.trim()],
     }))
-
     setNewFeature("")
   }
 
@@ -180,24 +122,6 @@ export function ProductForm({ product, categories, onCancel, onSave }: ProductFo
     setFormData((prev) => ({
       ...prev,
       features: prev.features?.filter((f) => f !== feature),
-    }))
-  }
-
-  const handleAddVariant = () => {
-    if (!newVariant.trim()) return
-
-    setFormData((prev) => ({
-      ...prev,
-      variants: [...(prev.variants || []), newVariant.trim()],
-    }))
-
-    setNewVariant("")
-  }
-
-  const handleRemoveVariant = (variant: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      variants: prev.variants?.filter((v) => v !== variant),
     }))
   }
 
@@ -238,27 +162,32 @@ export function ProductForm({ product, categories, onCancel, onSave }: ProductFo
           <div>
             <label className="block text-sm font-medium mb-1">Category *</label>
             <select
-              name="categoryId"
-              value={formData.categoryId || ""}
+              name="category"
+              value={formData.category || ""}
               onChange={handleInputChange}
-              className={`w-full p-2 border rounded-md ${errors.categoryId ? "border-red-500" : ""}`}
+              className={`w-full p-2 border rounded-md ${errors.category ? "border-red-500" : ""}`}
             >
+
               <option value="">Select Category</option>
               {categories.map((categoryId) => (
                 <option key={categoryId} value={categoryId}>
-                  Category {categoryId}
+                  {categoryId}
                 </option>
               ))}
               <option value="new">+ Add New Category</option>
             </select>
-            {formData.categoryId === "new" && (
+            {formData.category === "new" && (
               <Input
                 className="mt-2"
-                placeholder="New category ID"
-                onChange={(e) => setFormData((prev) => ({ ...prev, categoryId: e.target.value }))}
+                placeholder="Enter new category"
+                onChange={(e) => setFormData((prev) => ({
+                  ...prev,
+                  category: e.target.value as Product["category"],
+                }))}
               />
             )}
-            {errors.categoryId && <p className="text-red-500 text-xs mt-1">{errors.categoryId}</p>}
+
+            {errors.category && <p className="text-red-500 text-xs mt-1">{errors.category}</p>}
           </div>
         </CardContent>
       </Card>
@@ -269,7 +198,7 @@ export function ProductForm({ product, categories, onCancel, onSave }: ProductFo
           <CardTitle>Pricing & Inventory</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">Price ($) *</label>
               <Input
@@ -282,20 +211,6 @@ export function ProductForm({ product, categories, onCancel, onSave }: ProductFo
                 className={errors.price ? "border-red-500" : ""}
               />
               {errors.price && <p className="text-red-500 text-xs mt-1">{errors.price}</p>}
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Original Price ($)</label>
-              <Input
-                type="number"
-                name="originalPrice"
-                value={formData.originalPrice || ""}
-                onChange={handleInputChange}
-                min="0"
-                step="0.01"
-                className={errors.originalPrice ? "border-red-500" : ""}
-                placeholder="Leave empty if no discount"
-              />
-              {errors.originalPrice && <p className="text-red-500 text-xs mt-1">{errors.originalPrice}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Stock</label>
@@ -386,85 +301,6 @@ export function ProductForm({ product, categories, onCancel, onSave }: ProductFo
                   type="button"
                   onClick={() => handleRemoveFeature(feature)}
                   className="text-blue-600 hover:text-blue-800"
-                >
-                  <FontAwesomeIcon icon={faTrash} className="h-3 w-3" />
-                </button>
-              </span>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Specifications */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Specifications</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex gap-2">
-            <Input
-              placeholder="Specification name"
-              value={newSpecKey}
-              onChange={(e) => setNewSpecKey(e.target.value)}
-            />
-            <Input
-              placeholder="Specification value"
-              value={newSpecValue}
-              onChange={(e) => setNewSpecValue(e.target.value)}
-            />
-            <Button type="button" onClick={handleAddSpecification}>
-              <FontAwesomeIcon icon={faPlus} className="h-4 w-4" />
-            </Button>
-          </div>
-          <div className="space-y-2">
-            {Object.entries(formData.specifications || {}).map(([key, value]) => (
-              <div key={key} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                <span>
-                  <strong>{key}:</strong> {value}
-                </span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleRemoveSpecification(key)}
-                  className="text-red-600"
-                >
-                  <FontAwesomeIcon icon={faTrash} className="h-3 w-3" />
-                </Button>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Variants */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Product Variants</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex gap-2">
-            <Input
-              placeholder="Add variant (e.g. 'Red', 'Small', 'Cotton')"
-              value={newVariant}
-              onChange={(e) => setNewVariant(e.target.value)}
-              onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), handleAddVariant())}
-            />
-            <Button type="button" onClick={handleAddVariant}>
-              <FontAwesomeIcon icon={faPlus} className="h-4 w-4" />
-            </Button>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {formData.variants?.map((variant) => (
-              <span
-                key={variant}
-                className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-800 rounded"
-              >
-                {variant}
-                <button
-                  type="button"
-                  onClick={() => handleRemoveVariant(variant)}
-                  className="text-purple-600 hover:text-purple-800"
                 >
                   <FontAwesomeIcon icon={faTrash} className="h-3 w-3" />
                 </button>

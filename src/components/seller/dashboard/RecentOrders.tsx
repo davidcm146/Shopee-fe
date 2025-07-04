@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ShoppingCart, Eye, Clock, CheckCircle, Package, Truck, AlertCircle } from "lucide-react"
 import type { Order, OrderStatus } from "@/types/order"
-import { OrderStatusUpdate } from "../orders/OrderStatsUpdate"
+// import { OrderStatusUpdate } from "../orders/OrderStatsUpdate"
 import { getAllOrders } from "@/data/order"
 import { getProductById } from "@/data/product"
 
@@ -159,11 +159,11 @@ export function RecentOrders() {
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2">
                   <h4 className="font-medium">#{order.id.slice(-8)}</h4>
-                  <OrderStatusUpdate
+                  {/* <OrderStatusUpdate
                     orderId={order.id}
                     currentStatus={order.status}
                     onStatusUpdated={handleStatusUpdated}
-                  />
+                  /> */}
                 </div>
                 <div className="text-sm text-muted-foreground mb-1">
                   {order.items.map((item, index) => (

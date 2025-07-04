@@ -2,12 +2,19 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import { faShoppingBag, faTruck, faCheckCircle, faTimes } from "@fortawesome/free-solid-svg-icons"
 import { Card, CardContent } from "../ui/card"
 import type { Order } from "../../types/order"
+import { calculateOrderStatus } from "../../data/order"
 
 interface OrdersStatsProps {
   orders: Order[]
 }
 
 export function OrdersStats({ orders }: OrdersStatsProps) {
+  // Calculate actual order statuses based on item statuses
+  const ordersWithCalculatedStatus = orders.map((order) => ({
+    ...order,
+    calculatedStatus: calculateOrderStatus(order.items),
+  }))
+
   const stats = [
     {
       label: "Total Orders",
@@ -17,22 +24,22 @@ export function OrdersStats({ orders }: OrdersStatsProps) {
       bgColor: "bg-blue-50",
     },
     {
-      label: "In Transit",
-      value: orders.filter((order) => order.status === "shipped").length,
+      label: "Pending",
+      value: ordersWithCalculatedStatus.filter((order) => order.calculatedStatus === "pending").length,
       icon: faTruck,
       color: "text-orange-600",
       bgColor: "bg-orange-50",
     },
     {
-      label: "Delivered",
-      value: orders.filter((order) => order.status === "delivered").length,
+      label: "Completed",
+      value: ordersWithCalculatedStatus.filter((order) => order.calculatedStatus === "completed").length,
       icon: faCheckCircle,
       color: "text-green-600",
       bgColor: "bg-green-50",
     },
     {
       label: "Cancelled",
-      value: orders.filter((order) => order.status === "cancelled").length,
+      value: ordersWithCalculatedStatus.filter((order) => order.calculatedStatus === "cancelled").length,
       icon: faTimes,
       color: "text-red-600",
       bgColor: "bg-red-50",

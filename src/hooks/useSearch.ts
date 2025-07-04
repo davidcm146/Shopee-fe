@@ -45,7 +45,7 @@ export function useSearch() {
 
       // Filter by category
       if (params.filters.category !== "all") {
-        products = products.filter((product) => product.categoryId === params.filters.category)
+        products = products.filter((product) => product.category === params.filters.category)
       }
 
       // Filter by price range
@@ -54,9 +54,9 @@ export function useSearch() {
       )
 
       // Filter by rating
-      if (params.filters.rating > 0) {
-        products = products.filter((product) => product.rating >= params.filters.rating)
-      }
+      // if (params.filters.rating > 0) {
+      //   products = products.filter((product) => product.rating >= params.filters.rating)
+      // }
 
       // Filter by stock
       if (params.filters.inStock) {
@@ -71,11 +71,12 @@ export function useSearch() {
         case "price_high":
           products.sort((a, b) => b.price - a.price)
           break
-        case "rating":
-          products.sort((a, b) => b.rating - a.rating)
-          break
+        // case "rating":
+        //   products.sort((a, b) => b.rating - a.rating)
+        //   break
         case "newest":
-          products.sort((a, b) => b.id - a.id)
+          products.sort((a, b) => new Date(b.createdAt ?? "").getTime() - new Date(a.createdAt ?? "").getTime())
+          break
           break
         default:
           // relevance - keep original order for search results

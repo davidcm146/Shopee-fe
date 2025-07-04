@@ -14,7 +14,6 @@ interface ProductInfoProps {
 
 export function ProductInfo({ product }: ProductInfoProps) {
   const [quantity, setQuantity] = useState(1)
-  const [selectedVariant, setSelectedVariant] = useState(product.variants?.[0] || "")
   const [isAdding, setIsAdding] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
 
@@ -29,7 +28,7 @@ export function ProductInfo({ product }: ProductInfoProps) {
     // Simulate API call delay
     await new Promise((resolve) => setTimeout(resolve, 500))
 
-    addToCart(product, quantity, selectedVariant)
+    addToCart(product, quantity)
     setShowSuccess(true)
     setIsAdding(false)
 
@@ -37,7 +36,7 @@ export function ProductInfo({ product }: ProductInfoProps) {
     setTimeout(() => setShowSuccess(false), 2000)
   }
 
-  const currentQuantityInCart = getItemQuantity(product.id, selectedVariant)
+  const currentQuantityInCart = getItemQuantity(product.id)
 
   return (
     <div className="space-y-6">
@@ -51,50 +50,22 @@ export function ProductInfo({ product }: ProductInfoProps) {
                 <FontAwesomeIcon
                   key={i}
                   icon={faStar}
-                  className={`h-4 w-4 ${i < Math.floor(product.rating) ? "text-yellow-400" : "text-gray-300"}`}
+                  className={`h-4 w-4 ${i < Math.floor(product.ratings || 0) ? "text-yellow-400" : "text-gray-300"}`}
                 />
               ))}
             </div>
             <span className="text-sm text-muted-foreground">
-              {product.rating} ({product.reviews} reviews)
+              {product.ratings}
             </span>
           </div>
-          <span className="text-sm text-muted-foreground">|</span>
-          <span className="text-sm text-muted-foreground">{product.sold || 0} sold</span>
         </div>
       </div>
 
       {/* Price */}
       <div className="flex items-center gap-4">
         <span className="text-3xl font-bold text-orange-500">${product.price}</span>
-        {product.originalPrice && (
-          <span className="text-lg text-muted-foreground line-through">${product.originalPrice}</span>
-        )}
-        {product.discount && <Badge className="bg-orange-500">{product.discount}% OFF</Badge>}
       </div>
-
-      {/* Variants */}
-      {product.variants && product.variants.length > 0 && (
-        <div>
-          <h3 className="font-medium mb-3">Variants</h3>
-          <div className="flex flex-wrap gap-2">
-            {product.variants.map((variant, index) => (
-              <button
-                key={index}
-                onClick={() => setSelectedVariant(variant)}
-                className={`px-4 py-2 border rounded-md text-sm ${
-                  selectedVariant === variant
-                    ? "border-orange-500 bg-orange-50 text-orange-500"
-                    : "border-gray-300 hover:border-gray-400"
-                }`}
-              >
-                {variant}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
+    
       {/* Quantity */}
       <div>
         <h3 className="font-medium mb-3">Quantity</h3>

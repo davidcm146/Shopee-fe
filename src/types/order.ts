@@ -1,29 +1,33 @@
-import type { Voucher } from "./voucher"
+import type{ Voucher } from "./voucher"
 
 export interface Order {
   id: string
   buyerId: string
   paymentId?: string
   deliveryAddress: string
-  status: OrderStatus
   totalPrice: number
   subtotal: number
-  shipping: number
-  createdAt: Date
   vouchers: Voucher[]
+  createdAt: Date
   items: OrderItem[]
 }
 
 export interface OrderItem {
-  id: string
-  productId: number
+  productId: string
+  sellerId: string
   quantity: number
   unitPrice: number
-  createdAt: Date
-  selectedVariant?: string
+  createdAt: Date | string
+  statusHistory: OrderItemStatusHistory[]
 }
 
-export type OrderStatus = "pending" | "confirmed" | "packed" | "shipped" | "delivered" | "cancelled"
+export interface OrderItemStatusHistory {
+  status: OrderItemStatus
+  updatedAt: Date | string
+  notes?: string
+}
+
+export type OrderItemStatus = "pending" | "confirmed" | "packed" | "shipping" | "delivered" | "cancelled"
 
 export interface CheckoutData {
   deliveryAddress: string

@@ -1,14 +1,15 @@
-"use client"
-
 import { useState } from "react"
 import { Link } from "react-router-dom"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
-import { faEye, faDownload, faTimes, faTag } from "@fortawesome/free-solid-svg-icons"
+import { faEye, faDownload, faTimes, faTag, faTruck } from "@fortawesome/free-solid-svg-icons"
 import { Button } from "../ui/button"
 import { Badge } from "../ui/badge"
-import { cancelOrder } from "../../data/order"
-import type { Order, OrderStatus } from "../../types/order"
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
+import { Separator } from "../ui/separator"
+import { cancelOrderItem } from "../../data/order"
+import type { Order, OrderItemStatus } from "../../types/order"
 import { getProductById } from "../../data/product"
+import { formatDate } from "@/lib/dateTime.utils"
 
 interface OrderItemProps {
   order: Order
@@ -16,13 +17,13 @@ interface OrderItemProps {
 }
 
 export function OrderItem({ order, onOrderUpdate }: OrderItemProps) {
-  const [cancellingOrder, setCancellingOrder] = useState(false)
+  const [cancellingItems, setCancellingItems] = useState<Set<number>>(new Set())
 
-  const getStatusColor = (status: OrderStatus) => {
+  const getStatusColor = (status: OrderItemStatus) => {
     switch (status) {
       case "delivered":
         return "bg-green-500"
-      case "shipped":
+      case "shipping":
         return "bg-blue-500"
       case "packed":
         return "bg-purple-500"
@@ -37,105 +38,126 @@ export function OrderItem({ order, onOrderUpdate }: OrderItemProps) {
     }
   }
 
-  const canCancelOrder = (status: OrderStatus) => {
+  const canCancelItem = (status: OrderItemStatus) => {
     return status === "pending" || status === "confirmed"
   }
 
-  const handleCancelOrder = async () => {
-    if (window.confirm("Are you sure you want to cancel this order?")) {
-      setCancellingOrder(true)
+  const handleCancelOrderItem = async (itemIndex: number) => {
+    if (window.confirm("Are you sure you want to cancel this item?")) {
+      setCancellingItems((prev) => new Set(prev).add(itemIndex))
       try {
-        await cancelOrder(order.id)
+        await cancelOrderItem(order.id, itemIndex)
         onOrderUpdate?.()
         // Refresh the page to show updated status
         window.location.reload()
       } catch (error) {
-        console.error("Failed to cancel order:", error)
+        console.error("Failed to cancel order item:", error)
       } finally {
-        setCancellingOrder(false)
+        setCancellingItems((prev) => {
+          const newSet = new Set(prev)
+          newSet.delete(itemIndex)
+          return newSet
+        })
       }
     }
   }
 
   return (
-    <div className="border rounded-lg p-4">
-      <div className="flex items-center justify-between mb-3">
-        <div>
-          <h3 className="font-semibold">Order #{order.id.slice(-8)}</h3>
-          <p className="text-sm text-muted-foreground">{order.createdAt.toLocaleDateString()}</p>
+    <Card className="w-full">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-lg">Order #{order.id}</CardTitle>
+            <p className="text-sm text-muted-foreground">{formatDate(order.createdAt)}</p>
+          </div>
         </div>
-        <div className="text-right">
-          <p className="font-bold">${order.totalPrice.toFixed(2)}</p>
-          <Badge className={`${getStatusColor(order.status)} text-white`}>
-            {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-          </Badge>
-        </div>
-      </div>
+      </CardHeader>
 
-      <div className="mb-3">
-        <p className="text-sm text-muted-foreground mb-1">{order.items.length} items:</p>
-        <div className="space-y-1">
-          {order.items.map((item) => (
-            <div key={item.id} className="flex justify-between text-sm">
-              <span>
-                {getProductById(item.productId)?.name || `Product ${item.productId}`} x {item.quantity}
-                {item.selectedVariant && ` (${item.selectedVariant})`}
-              </span>
-              <span>${(item.unitPrice * item.quantity).toFixed(2)}</span>
+      <CardContent className="space-y-4">
+        {/* Vouchers display */}
+        {order.vouchers && order.vouchers.length > 0 && (
+          <div className="bg-green-50 p-3 rounded-lg">
+            <div className="flex items-center gap-1 mb-2">
+              <FontAwesomeIcon icon={faTag} className="h-3 w-3 text-green-600" />
+              <span className="text-sm font-medium text-green-600">Vouchers Applied:</span>
             </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Vouchers display */}
-      {order.vouchers && order.vouchers.length > 0 && (
-        <div className="mb-3">
-          <div className="flex items-center gap-1 mb-1">
-            <FontAwesomeIcon icon={faTag} className="h-3 w-3 text-green-600" />
-            <span className="text-sm font-medium text-green-600">Vouchers Applied:</span>
+            <div className="space-y-1">
+              {order.vouchers.map((voucher) => (
+                <div key={voucher.id} className="text-sm text-green-600">
+                  • {voucher.title} - {voucher.description}
+                  {voucher.type === "percentage" && ` (${voucher.discount}% off)`}
+                  {voucher.type === "fixed_amount" && ` ($${voucher.discount} off)`}
+                  {voucher.type === "free_shipping" && " (Free shipping)"}
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="space-y-1">
-            {order.vouchers.map((voucher) => (
-              <div key={voucher.id} className="text-sm text-green-600">
-                • {voucher.title} - {voucher.description}
-                {voucher.type === "percentage" && ` (${voucher.discount}% off)`}
-                {voucher.type === "fixed_amount" && ` ($${voucher.discount} off)`}
-                {voucher.type === "free_shipping" && " (Free shipping)"}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="mb-3">
-        <p className="text-sm text-muted-foreground">Delivery Address:</p>
-        <p className="text-sm">{order.deliveryAddress}</p>
-      </div>
-
-      <div className="flex gap-2">
-        <Link to={`/order/${order.id}`}>
-          <Button variant="outline" size="sm">
-            <FontAwesomeIcon icon={faEye} className="h-3 w-3 mr-1" />
-            View Details
-          </Button>
-        </Link>
-        <Button variant="outline" size="sm">
-          <FontAwesomeIcon icon={faDownload} className="h-3 w-3 mr-1" />
-          Invoice
-        </Button>
-        {canCancelOrder(order.status) && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleCancelOrder}
-            disabled={cancellingOrder}
-            className="text-red-600 hover:text-red-700"
-          >
-            <FontAwesomeIcon icon={faTimes} className="h-3 w-3 mr-1" />
-            {cancellingOrder ? "Cancelling..." : "Cancel"}
-          </Button>
         )}
-      </div>
-    </div>
+
+        {/* Order Items */}
+        <div className="space-y-3">
+          <h4 className="font-medium text-gray-700">Items ({order.items.length}):</h4>
+          {order.items.map((item, index) => {
+            const product = getProductById(item.productId)
+            const isItemCancelling = cancellingItems.has(index)
+
+            return (
+              <div key={index} className="bg-gray-50 p-3 rounded border">
+                <div className="flex justify-between items-center">
+                  <div className="flex-1">
+                    <h5 className="font-medium">{product?.name || `Product ${item.productId}`}</h5>
+                    <p className="text-sm text-gray-600">
+                      Quantity: {item.quantity} × ${item.unitPrice.toFixed(2)}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold">${(item.unitPrice * item.quantity).toFixed(2)}</p>
+                    <Badge className={`${getStatusColor(item.statusHistory[item.statusHistory.length - 1].status)} text-white text-xs`}>
+                      {item.statusHistory[item.statusHistory.length - 1].status.charAt(0).toUpperCase() + item.statusHistory[item.statusHistory.length - 1].status.slice(1)}
+                    </Badge>
+                  </div>
+                </div>
+
+                {/* Item Actions */}
+                <div className="mt-2 pt-2">
+                  <div className="flex gap-2">
+                    {canCancelItem(item.statusHistory[item.statusHistory.length - 1].status) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleCancelOrderItem(index)}
+                        disabled={isItemCancelling}
+                        className="text-red-600 hover:text-red-700 text-xs"
+                      >
+                        <FontAwesomeIcon icon={faTimes} className="h-3 w-3 mr-1" />
+                        {isItemCancelling ? "Cancelling..." : "Cancel Item"}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        <Separator />
+
+        {/* Delivery Address */}
+        <div>
+          <p className="text-sm font-medium text-gray-700 mb-1">Delivery Address:</p>
+          <p className="text-sm text-gray-600">{order.deliveryAddress}</p>
+        </div>
+
+        {/* Order Actions */}
+        <div className="flex gap-2 pt-2">
+          <Link to={`/order/${order.id}`}>
+            <Button variant="outline" size="sm">
+              <FontAwesomeIcon icon={faEye} className="h-3 w-3 mr-1" />
+              View Details
+            </Button>
+          </Link>
+        </div>
+      </CardContent>
+    </Card>
   )
 }

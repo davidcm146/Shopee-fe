@@ -4,7 +4,7 @@ export const categories: Category[] = [
   { id: "all", name: "All" },
   { id: "electronics", name: "Electronics" },
   { id: "fashion", name: "Fashion" },
-  { id: "home", name: "Household" },
+  { id: "household", name: "Household" },
   { id: "beauty", name: "Beauty" },
   { id: "sports", name: "Sports" },
 ]

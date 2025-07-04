@@ -1,5 +1,3 @@
-"use client"
-
 import { useParams } from "react-router-dom"
 import { ProductImageGallery } from "../components/product-detail/ProductImageGallery"
 import { ProductInfo } from "../components/product-detail/ProductInfo"
@@ -11,7 +9,7 @@ import { getCategoryById } from "@/data/category"
 
 export function ProductDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const product = getProductById(Number(id))
+  const product = getProductById(id as string)
 
   if (!product) {
     return (
@@ -24,7 +22,7 @@ export function ProductDetailPage() {
     )
   }
 
-  const category = getCategoryById(product.categoryId)
+  const category = getCategoryById(product.category)
 
   return (
     <div className="container py-6 px-8 ">
@@ -52,7 +50,7 @@ export function ProductDetailPage() {
       <ProductReviews productId={product.id} />
 
       {/* Related Products */}
-      <RelatedProducts categoryId={product.categoryId} currentProductId={product.id} />
+      <RelatedProducts category={product.category} currentProductId={product.id} />
     </div>
   )
 }

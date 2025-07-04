@@ -8,15 +8,29 @@ import { ProductForm } from "../../components/seller/products/ProductForm"
 import { ProductDetail } from "../../components/seller/products/ProductDetail"
 import type { Product } from "../../types/product"
 import { products as initialProducts } from "../../data/product"
+import { generateId } from "@/lib/user.utils"
 
 export function ProductManagementPage() {
   const [activeTab, setActiveTab] = useState("list")
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [isEditing, setIsEditing] = useState(false)
-  const [products, setProducts] = useState<Product[]>(initialProducts)
+  const currentSellerId = "sellerA"
+  const [products, setProducts] = useState<Product[]>(
+    initialProducts.filter((p) => p.sellerId === currentSellerId)
+  )
 
-  // Get unique categories
-  const categories = Array.from(new Set(products.map((product) => product.categoryId)))
+  const defaultCategories: Product["category"][] = [
+    "fashion",
+    "electronics",
+    "household",
+    "sports",
+    "beauty",
+  ]
+
+
+  const categories = Array.from(
+    new Set([...defaultCategories, ...products.map((product) => product.category)])
+  )
 
   // Handle create new product
   const handleCreateNew = () => {
@@ -45,36 +59,21 @@ export function ProductManagementPage() {
       const updatedProduct: Product = {
         ...selectedProduct,
         ...productData,
-        discount:
-          productData.originalPrice && productData.price
-            ? Math.round(((productData.originalPrice - productData.price) / productData.originalPrice) * 100)
-            : undefined,
       }
 
       setProducts((prev) => prev.map((product) => (product.id === selectedProduct.id ? updatedProduct : product)))
     } else {
-      // Create new product
-      const maxId = products.reduce((max, product) => Math.max(max, product.id), 0)
       const newProduct: Product = {
-        id: maxId + 1,
+        id: generateId(),
         name: productData.name || "Untitled Product",
         price: productData.price || 0,
-        originalPrice: productData.originalPrice,
-        discount:
-          productData.originalPrice && productData.price
-            ? Math.round(((productData.originalPrice - productData.price) / productData.originalPrice) * 100)
-            : undefined,
-        rating: 0,
-        reviews: 0,
+        ratings: 0,
         images: productData.images || ["/placeholder.svg?height=500&width=500&text=Product+Image"],
-        categoryId: productData.categoryId || "1",
+        category: productData.category!,
         sellerId: "seller1",
         description: productData.description || "",
         features: productData.features || [],
-        specifications: productData.specifications || {},
-        variants: productData.variants || [],
         stock: productData.stock || 0,
-        sold: 0,
       }
 
       setProducts((prev) => [newProduct, ...prev])
@@ -87,7 +86,7 @@ export function ProductManagementPage() {
   }
 
   // Handle delete product
-  const handleDeleteProduct = async (productId: number) => {
+  const handleDeleteProduct = async (productId: string) => {
     setProducts((prev) => prev.filter((product) => product.id !== productId))
   }
 

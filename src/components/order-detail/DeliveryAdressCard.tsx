@@ -16,7 +16,9 @@ export function DeliveryAddressCard({ address }: DeliveryAddressCardProps) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <p>{address}</p>
+        <div className="p-3 bg-gray-50 rounded-lg border">
+          <p className="text-sm">{address}</p>
+        </div>
       </CardContent>
     </Card>
   )

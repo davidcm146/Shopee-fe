@@ -1,5 +1,3 @@
-"use client"
-
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import { faFilter, faStar } from "@fortawesome/free-solid-svg-icons"
 import { Button } from "../ui/button"

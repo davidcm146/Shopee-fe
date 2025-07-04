@@ -1,7 +1,7 @@
 import { OrderManagement } from "@/components/seller/orders/OrderManagement"
 
 export default function OrdersManagementPage() {
-  const sellerId = "seller1"
+  const sellerId = "sellerA"
 
   return (
     <div className="container mx-auto py-6">

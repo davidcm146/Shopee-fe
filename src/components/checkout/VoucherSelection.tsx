@@ -1,11 +1,13 @@
+"use client"
+
 import { useState } from "react"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import { faTicket, faCheck, faTimes, faTag } from "@fortawesome/free-solid-svg-icons"
 import { Button } from "../ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import { Badge } from "../ui/badge"
-import { getAvailableVouchers, calculateVoucherDiscount } from "../../data/voucher"
-import type { Voucher } from "../../types/voucher"
+import { getAvailableVouchers, calculateVoucherDiscount } from "@/data/voucher"
+import type { Voucher } from "@/types/voucher"
 
 interface VoucherSelectionProps {
   orderAmount: number
@@ -77,7 +79,7 @@ export function VoucherSelection({ orderAmount, onVouchersApply, appliedVouchers
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <FontAwesomeIcon icon={faTicket} className="h-5 w-5" />
+          <FontAwesomeIcon icon={faTicket} className="h-5 w-5 text-orange-500" />
           Vouchers & Discounts
         </CardTitle>
       </CardHeader>

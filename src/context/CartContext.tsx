@@ -1,34 +1,40 @@
-"use client"
-
 import type React from "react"
-import { createContext, useContext, useReducer, useEffect } from "react"
+import {
+  createContext,
+  useContext,
+  useReducer,
+  useEffect,
+  useRef,
+} from "react"
 import type { Product } from "../types/product"
 import type { Cart, CartItem } from "../types/cart"
 
 interface CartState {
   cart: Cart | null
+  selectedItems: string[] // Array of selected cart item productIds
   isLoading: boolean
   error: string | null
 }
 
 type CartAction =
   | { type: "INITIALIZE_CART"; payload: Cart }
-  | { type: "ADD_TO_CART"; payload: { product: Product; quantity: number; selectedVariant?: string } }
-  | { type: "REMOVE_FROM_CART"; payload: { cartItemId: string } }
-  | { type: "UPDATE_QUANTITY"; payload: { cartItemId: string; quantity: number } }
+  | { type: "ADD_TO_CART"; payload: { product: Product; quantity: number } }
+  | { type: "REMOVE_FROM_CART"; payload: { productId: string } }
+  | { type: "UPDATE_QUANTITY"; payload: { productId: string; quantity: number } }
   | { type: "CLEAR_CART" }
   | { type: "SET_LOADING"; payload: boolean }
   | { type: "SET_ERROR"; payload: string }
+  | { type: "TOGGLE_ITEM_SELECTION"; payload: { productId: string } }
+  | { type: "SELECT_ALL_ITEMS" }
+  | { type: "DESELECT_ALL_ITEMS" }
+  | { type: "SET_SELECTED_ITEMS"; payload: string[] }
+  | { type: "INITIALIZE_SELECTED_ITEMS"; payload: string[] }
 
 const initialState: CartState = {
   cart: null,
+  selectedItems: [],
   isLoading: false,
   error: null,
-}
-
-// Simple ID generation function
-function generateId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).substr(2)
 }
 
 function calculateTotalAmount(items: CartItem[]): number {
@@ -44,63 +50,65 @@ function cartReducer(state: CartState, action: CartAction): CartState {
         isLoading: false,
       }
 
+    case "INITIALIZE_SELECTED_ITEMS":
+      return {
+        ...state,
+        selectedItems: action.payload,
+      }
+
     case "ADD_TO_CART": {
-      const { product, quantity, selectedVariant } = action.payload
+      const { product, quantity } = action.payload
       const now = new Date()
 
-      // If no cart exists, create a new one
       if (!state.cart) {
         const newCart: Cart = {
-          cartId: generateId(),
-          userId: "guest-user", // This would come from auth context in a real app
+          id: Date.now().toString(),
+          userId: "guest-user",
           totalAmount: product.price * quantity,
-          updatedAt: now,
           createdAt: now,
+          updatedAt: now,
           items: [
             {
-              id: generateId(),
               productId: product.id,
               unitPrice: product.price,
               quantity,
               createdAt: now,
-              selectedVariant,
-              updatedAt: new Date("2025-06-15")
             },
           ],
         }
         return {
           ...state,
           cart: newCart,
+          selectedItems: [product.id],
         }
       }
 
-      // Check if the product already exists in the cart
-      const existingItemIndex = state.cart.items.findIndex(
-        (item) => item.productId === product.id && item.selectedVariant === selectedVariant,
+      const existingIndex = state.cart.items.findIndex(
+        (item) => item.productId === product.id,
       )
 
       let updatedItems: CartItem[]
+      const updatedSelectedItems = [...state.selectedItems]
 
-      if (existingItemIndex > -1) {
-        // Update existing item
+      if (existingIndex > -1) {
         updatedItems = state.cart.items.map((item, index) =>
-          index === existingItemIndex ? { ...item, quantity: item.quantity + quantity, product } : item,
+          index === existingIndex
+            ? { ...item, quantity: item.quantity + quantity, updatedAt: now }
+            : item,
         )
       } else {
-        // Add new item
-        const newItem: CartItem = {
-          id: state.cart.cartId,
-          productId: product.id,
-          unitPrice: product.price,
-          quantity,
-          createdAt: now,
-          selectedVariant,
-          updatedAt: undefined
-        }
-        updatedItems = [...state.cart.items, newItem]
+        updatedItems = [
+          ...state.cart.items,
+          {
+            productId: product.id,
+            unitPrice: product.price,
+            quantity,
+            createdAt: now,
+          },
+        ]
+        updatedSelectedItems.push(product.id)
       }
 
-      // Calculate new total
       const totalAmount = calculateTotalAmount(updatedItems)
 
       return {
@@ -111,15 +119,17 @@ function cartReducer(state: CartState, action: CartAction): CartState {
           totalAmount,
           updatedAt: now,
         },
+        selectedItems: updatedSelectedItems,
       }
     }
 
     case "REMOVE_FROM_CART": {
       if (!state.cart) return state
 
-      const { cartItemId } = action.payload
-      const updatedItems = state.cart.items.filter((item) => item.id !== cartItemId)
+      const { productId } = action.payload
+      const updatedItems = state.cart.items.filter((item) => item.productId !== productId)
       const totalAmount = calculateTotalAmount(updatedItems)
+      const updatedSelectedItems = state.selectedItems.filter((id) => id !== productId)
 
       return {
         ...state,
@@ -129,20 +139,20 @@ function cartReducer(state: CartState, action: CartAction): CartState {
           totalAmount,
           updatedAt: new Date(),
         },
+        selectedItems: updatedSelectedItems,
       }
     }
 
     case "UPDATE_QUANTITY": {
       if (!state.cart) return state
 
-      const { cartItemId, quantity } = action.payload
-
+      const { productId, quantity } = action.payload
       if (quantity <= 0) {
-        return cartReducer(state, { type: "REMOVE_FROM_CART", payload: { cartItemId } })
+        return cartReducer(state, { type: "REMOVE_FROM_CART", payload: { productId } })
       }
 
       const updatedItems = state.cart.items.map((item) =>
-        item.id === cartItemId ? { ...item, quantity } : item,
+        item.productId === productId ? { ...item, quantity, updatedAt: new Date() } : item,
       )
 
       const totalAmount = calculateTotalAmount(updatedItems)
@@ -162,20 +172,35 @@ function cartReducer(state: CartState, action: CartAction): CartState {
       return {
         ...state,
         cart: null,
+        selectedItems: [],
       }
+
+    case "TOGGLE_ITEM_SELECTION": {
+      const { productId } = action.payload
+      const isSelected = state.selectedItems.includes(productId)
+      const updated = isSelected
+        ? state.selectedItems.filter((id) => id !== productId)
+        : [...state.selectedItems, productId]
+      return { ...state, selectedItems: updated }
+    }
+
+    case "SELECT_ALL_ITEMS": {
+      if (!state.cart) return state
+      const allIds = state.cart.items.map((item) => item.productId)
+      return { ...state, selectedItems: allIds }
+    }
+
+    case "DESELECT_ALL_ITEMS":
+      return { ...state, selectedItems: [] }
+
+    case "SET_SELECTED_ITEMS":
+      return { ...state, selectedItems: action.payload }
 
     case "SET_LOADING":
-      return {
-        ...state,
-        isLoading: action.payload,
-      }
+      return { ...state, isLoading: action.payload }
 
     case "SET_ERROR":
-      return {
-        ...state,
-        error: action.payload,
-        isLoading: false,
-      }
+      return { ...state, error: action.payload, isLoading: false }
 
     default:
       return state
@@ -184,48 +209,66 @@ function cartReducer(state: CartState, action: CartAction): CartState {
 
 interface CartContextType {
   state: CartState
-  addToCart: (product: Product, quantity: number, selectedVariant?: string) => void
-  removeFromCart: (cartItemId: string) => void
-  updateQuantity: (cartItemId: string, quantity: number) => void
+  addToCart: (product: Product, quantity: number) => void
+  removeFromCart: (productId: string) => void
+  updateQuantity: (productId: string, quantity: number) => void
   clearCart: () => void
   getTotalItems: () => number
-  getItemQuantity: (productId: number, selectedVariant?: string) => number
+  getItemQuantity: (productId: string) => number
+  toggleItemSelection: (productId: string) => void
+  selectAllItems: () => void
+  deselectAllItems: () => void
+  setSelectedItems: (productIds: string[]) => void
+  getSelectedItems: () => CartItem[]
+  getSelectedItemsCount: () => number
+  getSelectedItemsTotal: () => number
+  isItemSelected: (productId: string) => boolean
+  isAllItemsSelected: () => boolean
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined)
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(cartReducer, initialState)
+  const isInitialized = useRef(false)
 
-  // Load cart from localStorage on mount
   useEffect(() => {
+    if (isInitialized.current) return
+    isInitialized.current = true
+
     const savedCart = localStorage.getItem("shopee-cart")
+    const savedSelectedItems = localStorage.getItem("shopee-cart-selected")
+
     if (savedCart) {
       try {
         const cartData = JSON.parse(savedCart)
 
-        // Convert string dates back to Date objects
-        if (cartData) {
-          cartData.createdAt = new Date(cartData.createdAt)
-          cartData.updatedAt = new Date(cartData.updatedAt)
+        cartData.createdAt = new Date(cartData.createdAt)
+        cartData.updatedAt = new Date(cartData.updatedAt)
 
-          if (cartData.items) {
-            cartData.items = cartData.items.map((item: any) => ({
-              ...item,
-              createdAt: new Date(item.createdAt),
-            }))
-          }
+        if (cartData.items) {
+          cartData.items = cartData.items.map((item: any) => ({
+            ...item,
+            createdAt: new Date(item.createdAt),
+            updatedAt: item.updatedAt ? new Date(item.updatedAt) : undefined,
+          }))
         }
 
         dispatch({ type: "INITIALIZE_CART", payload: cartData })
+
+        const selectedItemsData = savedSelectedItems ? JSON.parse(savedSelectedItems) : []
+        const validSelectedItems = selectedItemsData.filter((id: string) =>
+          cartData.items?.some((item: CartItem) => item.productId === id),
+        )
+        dispatch({ type: "INITIALIZE_SELECTED_ITEMS", payload: validSelectedItems })
       } catch (error) {
-        console.error("Failed to load cart from localStorage:", error)
+        console.error("Failed to load cart or selected items from localStorage:", error)
       }
     }
   }, [])
 
-  // Save cart to localStorage whenever state changes
   useEffect(() => {
+    if (!isInitialized.current) return
     if (state.cart) {
       localStorage.setItem("shopee-cart", JSON.stringify(state.cart))
     } else {
@@ -233,16 +276,25 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [state.cart])
 
-  const addToCart = (product: Product, quantity: number, selectedVariant?: string) => {
-    dispatch({ type: "ADD_TO_CART", payload: { product, quantity, selectedVariant } })
+  useEffect(() => {
+    if (!isInitialized.current) return
+    if (state.selectedItems.length > 0) {
+      localStorage.setItem("shopee-cart-selected", JSON.stringify(state.selectedItems))
+    } else {
+      localStorage.removeItem("shopee-cart-selected")
+    }
+  }, [state.selectedItems])
+
+  const addToCart = (product: Product, quantity: number) => {
+    dispatch({ type: "ADD_TO_CART", payload: { product, quantity } })
   }
 
-  const removeFromCart = (cartItemId: string) => {
-    dispatch({ type: "REMOVE_FROM_CART", payload: { cartItemId } })
+  const removeFromCart = (productId: string) => {
+    dispatch({ type: "REMOVE_FROM_CART", payload: { productId } })
   }
 
-  const updateQuantity = (cartItemId: string, quantity: number) => {
-    dispatch({ type: "UPDATE_QUANTITY", payload: { cartItemId, quantity } })
+  const updateQuantity = (productId: string, quantity: number) => {
+    dispatch({ type: "UPDATE_QUANTITY", payload: { productId, quantity } })
   }
 
   const clearCart = () => {
@@ -254,12 +306,48 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     return state.cart.items.reduce((total, item) => total + item.quantity, 0)
   }
 
-  const getItemQuantity = (productId: number, selectedVariant?: string): number => {
+  const getItemQuantity = (productId: string): number => {
     if (!state.cart) return 0
-    const item = state.cart.items.find(
-      (item) => item.productId === productId && item.selectedVariant === selectedVariant,
-    )
+    const item = state.cart.items.find((item) => item.productId === productId)
     return item ? item.quantity : 0
+  }
+
+  const toggleItemSelection = (productId: string) => {
+    dispatch({ type: "TOGGLE_ITEM_SELECTION", payload: { productId } })
+  }
+
+  const selectAllItems = () => {
+    dispatch({ type: "SELECT_ALL_ITEMS" })
+  }
+
+  const deselectAllItems = () => {
+    dispatch({ type: "DESELECT_ALL_ITEMS" })
+  }
+
+  const setSelectedItems = (productIds: string[]) => {
+    dispatch({ type: "SET_SELECTED_ITEMS", payload: productIds })
+  }
+
+  const getSelectedItems = (): CartItem[] => {
+    if (!state.cart?.items) return []
+    return state.cart.items.filter((item) => state.selectedItems.includes(item.productId))
+  }
+
+  const getSelectedItemsCount = (): number => {
+    return getSelectedItems().reduce((total, item) => total + item.quantity, 0)
+  }
+
+  const getSelectedItemsTotal = (): number => {
+    return getSelectedItems().reduce((total, item) => total + item.unitPrice * item.quantity, 0)
+  }
+
+  const isItemSelected = (productId: string): boolean => {
+    return state.selectedItems.includes(productId)
+  }
+
+  const isAllItemsSelected = (): boolean => {
+    if (!state.cart?.items || state.cart.items.length === 0) return false
+    return state.cart.items.every((item) => state.selectedItems.includes(item.productId))
   }
 
   return (
@@ -272,6 +360,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         clearCart,
         getTotalItems,
         getItemQuantity,
+        toggleItemSelection,
+        selectAllItems,
+        deselectAllItems,
+        setSelectedItems,
+        getSelectedItems,
+        getSelectedItemsCount,
+        getSelectedItemsTotal,
+        isItemSelected,
+        isAllItemsSelected,
       }}
     >
       {children}

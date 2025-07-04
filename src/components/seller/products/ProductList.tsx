@@ -8,6 +8,7 @@ import { Button } from "../../ui/button"
 import { Input } from "../../ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card"
 import type { Product } from "../../../types/product"
+import { Pagination } from "./Pagination"
 
 interface ProductFilters {
   categoryId?: string
@@ -22,7 +23,7 @@ interface ProductListProps {
   onEdit: (product: Product) => void
   onView: (product: Product) => void
   onCreateNew: () => void
-  onDelete: (productId: number) => void
+  onDelete: (productId: string) => void
 }
 
 export function ProductList({ products, onEdit, onView, onCreateNew, onDelete }: ProductListProps) {
@@ -30,11 +31,13 @@ export function ProductList({ products, onEdit, onView, onCreateNew, onDelete }:
     sortBy: "price_high",
     search: "",
   })
-  const [isDeleting, setIsDeleting] = useState<number | null>(null)
+  const [isDeleting, setIsDeleting] = useState<string | null>(null)
   const [showFilters, setShowFilters] = useState(false)
+  const PRODUCTS_PER_PAGE = 5
+  const [currentPage, setCurrentPage] = useState(1)
 
   // Get unique categories from products
-  const categories = Array.from(new Set(products.map((product) => product.categoryId)))
+  const categories = Array.from(new Set(products.map((product) => product.category)))
 
   // Filter and sort products
   const getFilteredProducts = (): Product[] => {
@@ -42,7 +45,7 @@ export function ProductList({ products, onEdit, onView, onCreateNew, onDelete }:
 
     // Filter by category
     if (filters.categoryId) {
-      filteredProducts = filteredProducts.filter((product) => product.categoryId === filters.categoryId)
+      filteredProducts = filteredProducts.filter((product) => product.category === filters.categoryId)
     }
 
     // Filter by search term
@@ -72,9 +75,6 @@ export function ProductList({ products, onEdit, onView, onCreateNew, onDelete }:
         case "price_low":
           filteredProducts.sort((a, b) => a.price - b.price)
           break
-        case "bestselling":
-          filteredProducts.sort((a, b) => (b.sold || 0) - (a.sold || 0))
-          break
       }
     }
 
@@ -82,9 +82,15 @@ export function ProductList({ products, onEdit, onView, onCreateNew, onDelete }:
   }
 
   const filteredProducts = getFilteredProducts()
+  const totalPages = Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE)
+
+  const paginatedProducts = filteredProducts.slice(
+    (currentPage - 1) * PRODUCTS_PER_PAGE,
+    currentPage * PRODUCTS_PER_PAGE
+  )
 
   // Handle delete product
-  const handleDeleteProduct = async (productId: number) => {
+  const handleDeleteProduct = async (productId: string) => {
     if (window.confirm("Are you sure you want to delete this product?")) {
       setIsDeleting(productId)
       try {
@@ -225,7 +231,7 @@ export function ProductList({ products, onEdit, onView, onCreateNew, onDelete }:
                   </td>
                 </tr>
               ) : (
-                filteredProducts.map((product) => (
+                paginatedProducts.map((product) => (
                   <tr key={product.id} className="border-b hover:bg-gray-50">
                     <td className="py-4 px-4">
                       <div className="flex items-center gap-3">
@@ -240,22 +246,16 @@ export function ProductList({ products, onEdit, onView, onCreateNew, onDelete }:
                         </div>
                       </div>
                     </td>
-                    <td className="py-4 px-4">Category {product.categoryId}</td>
+                    <td className="py-4 px-4">Category {product.category}</td>
                     <td className="py-4 px-4">
                       <div>
                         <p className="font-medium">${product.price.toFixed(2)}</p>
-                        {product.originalPrice && (
-                          <p className="text-xs text-muted-foreground line-through">
-                            ${product.originalPrice.toFixed(2)}
-                          </p>
-                        )}
                       </div>
                     </td>
                     <td className="py-4 px-4">
                       <span
-                        className={`font-medium ${
-                          !product.stock ? "text-red-600" : product.stock < 10 ? "text-yellow-600" : ""
-                        }`}
+                        className={`font-medium ${!product.stock ? "text-red-600" : product.stock < 10 ? "text-yellow-600" : ""
+                          }`}
                       >
                         {product.stock || 0}
                       </span>
@@ -263,8 +263,7 @@ export function ProductList({ products, onEdit, onView, onCreateNew, onDelete }:
                     <td className="py-4 px-4">
                       <div className="flex items-center gap-1">
                         <FontAwesomeIcon icon={faStar} className="h-3 w-3 text-yellow-500" />
-                        <span>{product.rating || 0}</span>
-                        <span className="text-xs text-muted-foreground">({product.reviews || 0})</span>
+                        <span>{product.ratings || 0}</span>
                       </div>
                     </td>
                     <td className="py-4 px-4">
@@ -301,6 +300,18 @@ export function ProductList({ products, onEdit, onView, onCreateNew, onDelete }:
               )}
             </tbody>
           </table>
+          {filteredProducts.length > 0 && totalPages > 1 && (
+            <div className="mt-6 flex justify-center">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={(page) => {
+                  setCurrentPage(page)
+                  window.scrollTo({ top: 0, behavior: "smooth" })
+                }}
+              />
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

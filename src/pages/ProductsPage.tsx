@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useEffect } from "react"
 import { useSearchParams } from "react-router-dom"
 import { SearchHeader } from "../components/products/SearchHeader"
@@ -17,20 +15,28 @@ export function ProductsPage() {
   const [currentPage, setCurrentPage] = useState(1)
 
   const query = searchParams.get("q") || ""
+  const categoryFromURL = searchParams.get("category")
 
   useEffect(() => {
     const searchParams = {
       query,
       filters,
       page: currentPage,
-      limit: 12,
+      limit: 8,
     }
     searchProducts(searchParams)
-  }, [query, filters, currentPage])
+  }, [query, filters, currentPage]);
+
+  useEffect(() => {
+  if (categoryFromURL) {
+    setFilters((prev) => ({ ...prev, category: categoryFromURL }))
+    setCurrentPage(1)
+  }
+}, [categoryFromURL])
 
   const handleFiltersChange = (newFilters: SearchFiltersType) => {
     setFilters(newFilters)
-    setCurrentPage(1) // Reset to first page when filters change
+    setCurrentPage(1)
   }
 
   const handleSortChange = (sortBy: SearchFiltersType["sortBy"]) => {
@@ -76,8 +82,6 @@ export function ProductsPage() {
           <Pagination
             currentPage={searchResult.currentPage}
             totalPages={searchResult.totalPages}
-            hasNextPage={searchResult.hasNextPage}
-            hasPreviousPage={searchResult.hasPreviousPage}
             onPageChange={handlePageChange}
           />
         </div>

@@ -26,10 +26,10 @@ export function ProfilePage() {
             await new Promise((resolve) => setTimeout(resolve, 1000))
 
             // Update user data
-            setUser((prev) => ({
-                ...prev,
-                ...data,
-            }))
+            // setUser((prev) => ({
+            //     ...prev,
+            //     ...data,
+            // }))
 
             showSuccessMessage("Profile updated successfully!")
             console.log("Profile updated:", data)

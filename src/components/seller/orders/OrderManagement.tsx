@@ -3,23 +3,39 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { OrderStatusUpdate } from "./OrderStatsUpdate"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { getAllOrders } from "@/data/order"
 import { getProductById } from "@/data/product"
 import { Search, Filter, Package, TrendingUp } from "lucide-react"
-import type { Order, OrderStatus } from "@/types/order"
+import type { Order, OrderItemStatus } from "@/types/order"
+import { OrderItem } from "./OrderItem"
+import { Pagination } from "./Pagination"
 
 interface OrderManagementProps {
   sellerId?: string
 }
 
 export function OrderManagement({ sellerId }: OrderManagementProps) {
+  sellerId = sellerId || "seller5" // Default to a test seller ID if not provided
   const [orders, setOrders] = useState<Order[]>([])
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState<OrderStatus | "all">("all")
+  const [statusFilter, setStatusFilter] = useState<OrderItemStatus | "all">("all")
+  const ORDERS_PER_PAGE = 5
+
+  const [currentPage, setCurrentPage] = useState(1)
+  const totalPages = Math.ceil(filteredOrders.length / ORDERS_PER_PAGE)
+  const paginatedOrders = filteredOrders.slice(
+    (currentPage - 1) * ORDERS_PER_PAGE,
+    currentPage * ORDERS_PER_PAGE
+  )
 
   useEffect(() => {
     loadOrders()
@@ -27,13 +43,32 @@ export function OrderManagement({ sellerId }: OrderManagementProps) {
 
   useEffect(() => {
     filterOrders()
+    setCurrentPage(1)
   }, [orders, searchTerm, statusFilter])
 
   const loadOrders = async () => {
     try {
       setLoading(true)
-      const fetchedOrders = getAllOrders()
-      setOrders(fetchedOrders)
+      const fetchedOrders = await getAllOrders()
+      const sellerOrders: Order[] = []
+
+      for (const order of fetchedOrders) {
+        const filteredItems = []
+
+        for (const item of order.items) {
+          const product = await getProductById(item.productId)
+          console.log(item);
+          if (product?.sellerId === sellerId) {
+            filteredItems.push(item)
+          }
+        }
+
+        if (filteredItems.length > 0) {
+          sellerOrders.push({ ...order, items: filteredItems })
+        }
+      }
+
+      setOrders(sellerOrders)
     } catch (error) {
       console.error("Failed to load orders:", error)
     } finally {
@@ -42,35 +77,31 @@ export function OrderManagement({ sellerId }: OrderManagementProps) {
   }
 
   const filterOrders = () => {
-    let filtered = orders
+    let filtered = [...orders]
 
-    // Search functionality
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase()
-      filtered = filtered.filter(
-        (order) =>
-          order.id.toLowerCase().includes(searchLower) ||
-          order.buyerId.toLowerCase().includes(searchLower) ||
-          order.deliveryAddress.toLowerCase().includes(searchLower) ||
-          order.items.some((item) => {
-            const product = getProductById(item.productId)
-            return product?.name.toLowerCase().includes(searchLower)
-          }),
+      filtered = filtered.filter((order) =>
+        order.id.toLowerCase().includes(searchLower) ||
+        order.buyerId.toLowerCase().includes(searchLower) ||
+        order.deliveryAddress.toLowerCase().includes(searchLower) ||
+        order.items.some((item) => {
+          const product = getProductById(item.productId)
+          return product?.name.toLowerCase().includes(searchLower)
+        })
       )
     }
 
-    // Filter by status
     if (statusFilter !== "all") {
-      filtered = filtered.filter((order) => order.status === statusFilter)
+      filtered = filtered.filter((order) =>
+        order.items.some(
+          (item) =>
+            item.statusHistory[item.statusHistory.length - 1]?.status === statusFilter
+        )
+      )
     }
 
     setFilteredOrders(filtered)
-  }
-
-  const handleStatusUpdated = (orderId: string, newStatus: OrderStatus) => {
-    setOrders((prevOrders) =>
-      prevOrders.map((order) => (order.id === orderId ? { ...order, status: newStatus } : order)),
-    )
   }
 
   const formatCurrency = (amount: number) => {
@@ -80,21 +111,15 @@ export function OrderManagement({ sellerId }: OrderManagementProps) {
     }).format(amount)
   }
 
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(date)
-  }
-
-  // Calculate stats
   const getOrderStats = (orders: Order[]) => {
     const total = orders.length
     const totalRevenue = orders.reduce((sum, order) => sum + order.totalPrice, 0)
-    const pending = orders.filter((order) => order.status === "pending").length
+    const pending = orders.filter((order) =>
+      order.items.some(
+        (item) =>
+          item.statusHistory[item.statusHistory.length - 1]?.status === "pending"
+      )
+    ).length
     const averageOrderValue = total > 0 ? totalRevenue / total : 0
 
     return {
@@ -106,19 +131,6 @@ export function OrderManagement({ sellerId }: OrderManagementProps) {
   }
 
   const stats = getOrderStats(orders)
-
-  if (loading) {
-    return (
-      <Card>
-        <CardContent className="flex items-center justify-center py-8">
-          <div className="text-center">
-            <Package className="h-8 w-8 mx-auto mb-2 text-muted-foreground animate-pulse" />
-            <p className="text-muted-foreground">Loading orders...</p>
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
 
   return (
     <div className="space-y-6">
@@ -192,7 +204,8 @@ export function OrderManagement({ sellerId }: OrderManagementProps) {
                 className="pl-10"
               />
             </div>
-            <Select value={statusFilter} onValueChange={(value: OrderStatus | "all") => setStatusFilter(value)}>
+
+            <Select value={statusFilter} onValueChange={(value: OrderItemStatus | "all") => setStatusFilter(value)}>
               <SelectTrigger className="w-48">
                 <Filter className="h-4 w-4 mr-2" />
                 <SelectValue placeholder="Filter by status" />
@@ -202,7 +215,7 @@ export function OrderManagement({ sellerId }: OrderManagementProps) {
                 <SelectItem value="pending">Pending</SelectItem>
                 <SelectItem value="confirmed">Confirmed</SelectItem>
                 <SelectItem value="packed">Packed</SelectItem>
-                <SelectItem value="shipped">Shipped</SelectItem>
+                <SelectItem value="shipping">Shipping</SelectItem>
                 <SelectItem value="delivered">Delivered</SelectItem>
                 <SelectItem value="cancelled">Cancelled</SelectItem>
               </SelectContent>
@@ -223,58 +236,20 @@ export function OrderManagement({ sellerId }: OrderManagementProps) {
             </div>
           ) : (
             <div className="space-y-4">
-              {filteredOrders.map((order) => (
-                <div key={order.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <div className="flex items-center gap-3 mb-2">
-                        <h4 className="font-semibold">#{order.id.slice(-8)}</h4>
-                        <OrderStatusUpdate
-                          orderId={order.id}
-                          currentStatus={order.status}
-                          onStatusUpdated={handleStatusUpdated}
-                        />
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        Buyer: {order.buyerId} • {formatDate(order.createdAt)}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-lg">{formatCurrency(order.totalPrice)}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {order.items.reduce((sum, item) => sum + item.quantity, 0)} items
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Order Items */}
-                  <div className="space-y-2 mb-3">
-                    {order.items.map((item) => (
-                      <div key={item.id} className="flex justify-between text-sm">
-                        <span>
-                          {getProductById(item.productId)?.name || `Product ${item.productId}`}
-                          {item.selectedVariant && ` (${item.selectedVariant})`}
-                          {" × "}
-                          {item.quantity}
-                        </span>
-                        <span>{formatCurrency(item.unitPrice * item.quantity)}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Delivery Address */}
-                  <div className="text-sm text-muted-foreground border-t pt-2">
-                    <strong>Delivery:</strong> {order.deliveryAddress}
-                  </div>
-
-                  {/* Voucher Info */}
-                  {order.vouchers && order.vouchers.length > 0 && (
-                    <div className="text-sm text-green-600 mt-1">
-                      <strong>Vouchers Applied:</strong> {order.vouchers.map((v) => v.title).join(", ")}
-                    </div>
-                  )}
-                </div>
+              {paginatedOrders.map((order) => (
+                <OrderItem key={order.id} order={order} />
               ))}
+
+              {filteredOrders.length > 0 && totalPages > 1 && (
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={(page) => {
+                    setCurrentPage(page)
+                    window.scrollTo({ top: 0, behavior: "smooth" })
+                  }}
+                />
+              )}
             </div>
           )}
         </CardContent>

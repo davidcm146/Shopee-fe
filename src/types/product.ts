@@ -1,18 +1,15 @@
 export interface Product {
-  id: number
+  id: string
   name: string
   price: number
-  originalPrice?: number
-  discount?: number
-  rating: number
-  reviews: number
   images: string[]
-  categoryId: string
+  ratings?: number
+  category: "fashion" | "electronics" | "household"| "sports" | "beauty" | string
   sellerId: string
+  isDeleted?: boolean
   description?: string
   features?: string[]
-  specifications?: Record<string, string>
-  variants?: string[]
-  stock?: number
-  sold?: number
+  stock: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
 }

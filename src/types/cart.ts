@@ -1,5 +1,5 @@
 export interface Cart {
-  cartId: string
+  id: string
   userId: string
   totalAmount: number
   updatedAt?: Date
@@ -8,11 +8,13 @@ export interface Cart {
 }
 
 export interface CartItem {
-  id: string
-  productId: number // Using number to match our existing product IDs
+  productId: string // Using number to match our existing product IDs
   unitPrice: number
   quantity: number
-  createdAt: Date
-  updatedAt?: Date
-  selectedVariant?: string
+  statusHistory?: CartItemStatus[]
+  createdAt: Date | string
+  updatedAt?: Date | string
 }
+
+export type CartItemStatus = "pending" | "confirmed" | "packed" | "shipped" | "delivered" | "cancelled"
+

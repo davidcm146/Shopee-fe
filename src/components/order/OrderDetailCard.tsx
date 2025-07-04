@@ -40,8 +40,8 @@ export function OrderDetailsCard({ order }: OrderDetailsCardProps) {
         <div>
           <p className="text-sm text-muted-foreground mb-2">Items Ordered</p>
           <div className="space-y-2">
-            {order.items.map((item) => (
-              <div key={item.id} className="flex justify-between">
+            {order.items.map((item, index) => (
+              <div key={index} className="flex justify-between">
                 <span>
                   {getProductById(item.productId)?.name} x {item.quantity}
                 </span>
@@ -56,10 +56,6 @@ export function OrderDetailsCard({ order }: OrderDetailsCardProps) {
           <div className="flex justify-between">
             <span className="text-sm">Subtotal</span>
             <span>${order.subtotal.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-sm">Shipping</span>
-            <span>{order.shipping === 0 ? "Free" : `$${order.shipping.toFixed(2)}`}</span>
           </div>
 
           {/* Voucher Discount */}

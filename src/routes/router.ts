@@ -8,6 +8,7 @@ import { CartPage } from "@/pages/CartPage"
 import { ProfilePage } from "@/pages/ProfilePage"
 import { OrderConfirmationPage } from "@/pages/OrderConfirmationPage"
 import { OrderDetailPage } from "@/pages/OrderDetailPage"
+import { OrderDetail } from "@/pages/seller/OrderDetailPage"
 import { CheckoutPage } from "@/pages/CheckoutPage"
 import { OrdersPage } from "@/pages/OrdersPage"
 import { ProductsPage } from "@/pages/ProductsPage"
@@ -43,7 +44,8 @@ export const router = createBrowserRouter([
       { path: "dashboard", Component: DashboardPage },
       { path: "products", Component: ProductManagementPage },
       { path: "orders", Component: OrdersManagementPage },
-      { path: "vouchers", Component: VouchersPage}
+      { path: "vouchers", Component: VouchersPage},
+      { path: "orders/:id", Component: OrderDetail },
     ],
   },
 ])

@@ -5,36 +5,55 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import { faTrash, faMinus, faPlus } from "@fortawesome/free-solid-svg-icons"
 import { Button } from "../ui/button"
 import { Card, CardContent } from "../ui/card"
+import { Checkbox } from "../ui/checkbox"
 import { getProductById } from "@/data/product"
+import { useCart } from "@/context/CartContext"
 import type { CartItem as CartItemType } from "@/types/cart"
 
 interface CartItemProps {
   item: CartItemType
-  onRemove: (itemId: string) => void
-  onUpdateQuantity: (itemId: string, quantity: number) => void
 }
 
-export function CartItem({ item, onRemove, onUpdateQuantity }: CartItemProps) {
+export function CartItem({ item }: CartItemProps) {
+  const { removeFromCart, updateQuantity, toggleItemSelection, isItemSelected } = useCart()
   const product = getProductById(item.productId)
+  const isSelected = isItemSelected(item.productId)
 
   const handleQuantityDecrease = () => {
     if (item.quantity > 1) {
-      onUpdateQuantity(item.id, item.quantity - 1)
+      updateQuantity(item.productId, item.quantity - 1)
     }
   }
 
   const handleQuantityIncrease = () => {
-    onUpdateQuantity(item.id, item.quantity + 1)
+    updateQuantity(item.productId, item.quantity + 1)
   }
 
   const handleRemove = () => {
-    onRemove(item.id)
+    removeFromCart(item.productId)
+  }
+
+  const handleSelectChange = (checked: boolean | string) => {
+    toggleItemSelection(item.productId)
   }
 
   return (
-    <Card>
+    <Card className={`transition-all duration-200 ${isSelected ? "ring-2 ring-orange-500 bg-orange-50/30" : ""}`}>
       <CardContent className="p-4">
         <div className="flex gap-4">
+          {/* Checkbox */}
+          <div className="flex items-start pt-2">
+            <Checkbox
+              id={`checkbox-${item.productId}`}
+              checked={isSelected}
+              onCheckedChange={handleSelectChange}
+              className="data-[state=checked]:bg-orange-500 data-[state=checked]:border-orange-500"
+            />
+            <label htmlFor={`checkbox-${item.productId}`} className="sr-only">
+              Select {product?.name || `Product ${item.productId}`}
+            </label>
+          </div>
+
           <Link to={`/product/${item.productId}`}>
             <img
               src={product?.images?.[0] || "/placeholder.svg?height=80&width=80"}
@@ -42,21 +61,22 @@ export function CartItem({ item, onRemove, onUpdateQuantity }: CartItemProps) {
               className="w-20 h-20 object-cover rounded-md"
             />
           </Link>
+
           <div className="flex-1">
             <Link to={`/product/${item.productId}`}>
               <h3 className="font-medium hover:text-orange-500 transition-colors">
                 {product?.name || `Product ${item.productId}`}
               </h3>
             </Link>
-            {item.selectedVariant && <p className="text-sm text-muted-foreground">Variant: {item.selectedVariant}</p>}
             <p className="text-lg font-bold text-orange-500 mt-1">${item.unitPrice.toFixed(2)}</p>
             <p className="text-xs text-muted-foreground mt-1">
-              Added: {item.createdAt.toLocaleDateString()}
+              Added: {item.createdAt.toLocaleString()}
               {item.updatedAt && new Date(item.updatedAt).getTime() !== new Date(item.createdAt).getTime() && (
                 <span> • Updated: {new Date(item.updatedAt).toLocaleDateString()}</span>
               )}
             </p>
           </div>
+
           <div className="flex flex-col items-end gap-2">
             <Button
               variant="ghost"
@@ -83,9 +103,12 @@ export function CartItem({ item, onRemove, onUpdateQuantity }: CartItemProps) {
             </div>
           </div>
         </div>
+
         <div className="flex justify-between items-center mt-4 pt-4 border-t">
           <span className="text-sm text-muted-foreground">Subtotal:</span>
-          <span className="font-bold">${(item.unitPrice * item.quantity).toFixed(2)}</span>
+          <span className={`font-bold ${isSelected ? "text-orange-500" : ""}`}>
+            ${(item.unitPrice * item.quantity).toFixed(2)}
+          </span>
         </div>
       </CardContent>
     </Card>

@@ -105,7 +105,6 @@ export function DashboardPage() {
       </div>
 
       {/* Recent Orders */}
-      <RecentOrders />
     </div>
   )
 }

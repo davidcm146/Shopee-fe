@@ -10,7 +10,7 @@ import { addReview } from "../../data/review"
 import type { Review } from "../../types/review"
 
 interface ReviewFormProps {
-  productId: number
+  productId: string
   onSuccess?: () => void
 }
 

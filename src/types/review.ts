@@ -1,7 +1,7 @@
 export interface Review {
   id: string
   userId: string
-  productId: number // Using number to match our existing product IDs
+  productId: string // Using number to match our existing product IDs
   rating: number // 1-5 stars
   comment: string
   video?: string
